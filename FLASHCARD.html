@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>FlashMind</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --bg3: #334155;
+  --surface: #1e293b;
+  --surface2: #253147;
+  --border: rgba(148,163,184,0.12);
+  --border2: rgba(148,163,184,0.22);
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --accent-bg: rgba(99,102,241,0.15);
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.15);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.15);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.15);
+  --blue: #3b82f6;
+  --blue-bg: rgba(59,130,246,0.15);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; }
+#app { height: 100%; display: flex; flex-direction: column; }
+
+/* NAVIGATION */
+#nav { display: flex; background: var(--bg2); border-top: 1px solid var(--border); padding: 8px 0 max(8px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border: none; background: none; color: var(--text3); cursor: pointer; font-size: 10px; letter-spacing: 0.3px; transition: color 0.15s; }
+.nav-btn.active { color: var(--accent2); }
+.nav-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+
+/* VIEWS */
+#views { flex: 1; overflow: hidden; position: relative; }
+.view { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; display: none; }
+.view.active { display: block; }
+
+/* SCROLLBAR */
+.view::-webkit-scrollbar { width: 3px; }
+.view::-webkit-scrollbar-track { background: transparent; }
+.view::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* HEADERS */
+.view-header { padding: 20px 16px 12px; position: sticky; top: 0; background: var(--bg); z-index: 10; border-bottom: 1px solid var(--border); }
+.view-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.view-header p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+/* CARDS LISTE */
+.group-list { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.group-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; active:scale(0.98); }
+.group-card:active { transform: scale(0.98); border-color: var(--border2); }
+.group-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.group-card h3 { font-size: 16px; font-weight: 600; }
+.group-card p { font-size: 13px; color: var(--text2); margin-top: 4px; line-height: 1.4; }
+.group-card-stats { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.stat-pill { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; }
+.pill-new { background: var(--blue-bg); color: #93c5fd; }
+.pill-learning { background: var(--amber-bg); color: #fcd34d; }
+.pill-mastered { background: var(--green-bg); color: #6ee7b7; }
+.pill-due { background: var(--red-bg); color: #fca5a5; }
+
+/* FAB */
+.fab { position: fixed; bottom: calc(80px + env(safe-area-inset-bottom)); right: 16px; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); z-index: 100; transition: transform 0.15s; }
+.fab:active { transform: scale(0.92); }
+.fab svg { width: 24px; height: 24px; stroke-width: 2.5; }
+
+/* MODAL */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg2); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px 16px max(20px, env(safe-area-inset-bottom)); }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+.modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal-close-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-close-row h2 { margin: 0; }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--bg3); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* FORMS */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; letter-spacing: 0.3px; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 10px 12px; font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); }
+.form-group textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-group select option { background: var(--bg2); }
+.btn-primary { width: 100%; padding: 13px; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+.btn-primary:active { opacity: 0.85; }
+.btn-secondary { width: 100%; padding: 12px; background: transparent; color: var(--text2); border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+.btn-danger { width: 100%; padding: 12px; background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm); font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+
+/* GROUP DETAIL */
+.back-btn { display: flex; align-items: center; gap: 6px; color: var(--accent2); font-size: 14px; cursor: pointer; padding: 16px; }
+.back-btn svg { width: 18px; height: 18px; }
+.group-detail-header { padding: 0 16px 16px; border-bottom: 1px solid var(--border); }
+.group-detail-header h1 { font-size: 20px; font-weight: 700; }
+.group-detail-header p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.detail-actions { padding: 12px 16px; display: flex; gap: 8px; }
+.btn-start { flex: 1; padding: 13px; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn-start:disabled { opacity: 0.4; cursor: default; }
+.btn-icon-outline { width: 46px; height: 46px; background: transparent; border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.btn-icon-outline svg { width: 20px; height: 20px; }
+.tabs { display: flex; padding: 0 16px; border-bottom: 1px solid var(--border); gap: 0; }
+.tab-btn { flex: 1; padding: 10px; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-size: 14px; font-weight: 500; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+.tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* CARD LIST IN GROUP */
+.card-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.flashcard-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.flashcard-item:active { opacity: 0.8; }
+.flashcard-item-left h4 { font-size: 14px; font-weight: 500; }
+.flashcard-item-left p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot-new { background: var(--blue); }
+.dot-learning { background: var(--amber); }
+.dot-mastered { background: var(--green); }
+
+/* SESSION */
+#session-view { background: var(--bg); display: none; }
+#session-view.active { display: flex; flex-direction: column; }
+.session-header { padding: 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.session-progress-bar { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.session-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s ease; }
+.session-count { font-size: 13px; color: var(--text2); flex-shrink: 0; }
+.card-area { flex: 1; padding: 16px; display: flex; flex-direction: column; }
+.flashcard-display { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; cursor: pointer; min-height: 300px; position: relative; overflow: hidden; }
+.card-side-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); margin-bottom: 16px; }
+.card-front-content { flex: 1; display: flex; align-items: center; justify-content: center; }
+.card-front-text { font-size: 20px; font-weight: 600; text-align: center; line-height: 1.4; }
+.card-back-content { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+.card-answer { font-size: 17px; font-weight: 500; line-height: 1.5; color: var(--text); }
+.card-divider { height: 1px; background: var(--border); }
+.card-note { font-size: 14px; color: var(--text2); line-height: 1.6; }
+.tap-hint { text-align: center; font-size: 13px; color: var(--text3); margin-top: 12px; }
+.rating-area { padding: 12px 0 max(16px, env(safe-area-inset-bottom)); flex-shrink: 0; }
+.rating-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rating-btn { padding: 10px 6px; border: none; border-radius: var(--radius-sm); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-family: inherit; transition: transform 0.1s; }
+.rating-btn:active { transform: scale(0.95); }
+.rating-btn .r-label { font-size: 13px; font-weight: 600; }
+.rating-btn .r-interval { font-size: 10px; opacity: 0.8; }
+.btn-again { background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+.btn-hard { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+.btn-good { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(59,130,246,0.25); }
+.btn-easy { background: var(--green-bg); color: var(--green); border: 1px solid rgba(16,185,129,0.25); }
+
+/* SESSION SUMMARY */
+.summary-content { padding: 24px 16px; }
+.summary-icon { width: 64px; height: 64px; background: var(--green-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+.summary-icon svg { width: 32px; height: 32px; stroke: var(--green); }
+.summary-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+.summary-sub { font-size: 14px; color: var(--text2); text-align: center; margin-bottom: 24px; }
+.summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 24px; }
+.summary-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; text-align: center; }
+.summary-stat .s-val { font-size: 26px; font-weight: 700; }
+.summary-stat .s-label { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* STATS VIEW */
+.stats-content { padding: 16px; }
+.stats-section { margin-bottom: 20px; }
+.stats-section h3 { font-size: 13px; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; font-weight: 500; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.stat-card .s-val { font-size: 24px; font-weight: 700; margin-bottom: 2px; }
+.stat-card .s-label { font-size: 12px; color: var(--text2); }
+.forecast-bar-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; }
+.forecast-item { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.forecast-item:last-child { margin-bottom: 0; }
+.forecast-day { font-size: 12px; color: var(--text2); width: 36px; flex-shrink: 0; }
+.forecast-bar-bg { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.forecast-bar { height: 100%; background: var(--accent); border-radius: 4px; }
+.forecast-n { font-size: 12px; color: var(--text2); width: 24px; text-align: right; flex-shrink: 0; }
+
+/* SETTINGS VIEW */
+.settings-content { padding: 16px; }
+.settings-section { margin-bottom: 20px; }
+.settings-section h3 { font-size: 13px; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 10px; font-weight: 500; }
+.settings-row { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.settings-row-left h4 { font-size: 15px; }
+.settings-row-left p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.settings-select { background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); padding: 6px 10px; font-size: 14px; font-family: inherit; }
+
+/* EMPTY STATES */
+.empty-state { text-align: center; padding: 48px 24px; color: var(--text2); }
+.empty-state svg { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.3; }
+.empty-state h3 { font-size: 16px; color: var(--text); margin-bottom: 6px; }
+.empty-state p { font-size: 14px; }
+
+/* TOAST */
+#toast { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg3); color: var(--text); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 999; white-space: nowrap; box-shadow: var(--shadow); }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* IMPORT SECTION */
+.import-drop { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--text2); cursor: pointer; transition: border-color 0.15s; margin-bottom: 12px; }
+.import-drop:hover { border-color: var(--accent); }
+.import-drop svg { width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; }
+.import-drop p { font-size: 14px; }
+.import-drop p small { display: block; font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ANIMATIONS */
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.group-card { animation: slideUp 0.2s ease; }
+@keyframes cardFlip { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0; transform: scale(0.96); } 100% { opacity: 1; transform: scale(1); } }
+.card-flip { animation: cardFlip 0.2s ease; }
+
+/* RETENTION BADGE */
+.retention-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+
+/* SCROLLABLE CARD DETAILS */
+.card-detail-content { padding: 16px; }
+.detail-field { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
+.detail-field .df-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.detail-field .df-value { font-size: 14px; }
+.detail-field .df-value.large { font-size: 16px; font-weight: 500; }
+.fsrs-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+.fsrs-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; }
+.fsrs-stat .fs-val { font-size: 16px; font-weight: 600; }
+.fsrs-stat .fs-label { font-size: 10px; color: var(--text3); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="views">
+    <!-- GROUPES -->
+    <div class="view active" id="view-groups">
+      <div class="view-header">
+        <h1>FlashMind</h1>
+        <p id="groups-subtitle">Chargement…</p>
+      </div>
+      <div class="group-list" id="group-list"></div>
+      <div style="height: 80px;"></div>
+    </div>
+
+    <!-- DETAIL GROUPE -->
+    <div class="view" id="view-group-detail">
+      <div class="back-btn" id="back-to-groups">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Groupes
+      </div>
+      <div class="group-detail-header">
+        <h1 id="detail-title"></h1>
+        <p id="detail-desc"></p>
+        <div class="group-card-stats" id="detail-stats"></div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn-start" id="btn-start-session">Commencer la révision</button>
+        <button class="btn-icon-outline" id="btn-edit-group" title="Modifier le groupe">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        </button>
+        <button class="btn-icon-outline" id="btn-import-cards" title="Importer des cartes">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        </button>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="cards">Cartes</button>
+        <button class="tab-btn" data-tab="stats-group">Statistiques</button>
+        <button class="tab-btn" data-tab="settings-group">Réglages</button>
+      </div>
+      <div class="tab-content active" id="tab-cards">
+        <div class="card-list" id="card-list"></div>
+        <div style="height: 80px;"></div>
+      </div>
+      <div class="tab-content" id="tab-stats-group">
+        <div class="stats-content" id="group-stats-content"></div>
+      </div>
+      <div class="tab-content" id="tab-settings-group">
+        <div class="settings-content">
+          <div class="settings-section">
+            <h3>Rétention cible</h3>
+            <div class="settings-row">
+              <div class="settings-row-left">
+                <h4>Taux de rétention</h4>
+                <p>Probabilité de se souvenir d'une carte à la date de révision</p>
+              </div>
+              <select class="settings-select" id="group-retention-select">
+                <option value="0.80">80%</option>
+                <option value="0.85">85%</option>
+                <option value="0.90" selected>90%</option>
+                <option value="0.95">95%</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>Réinitialisation</h3>
+            <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+              <div class="settings-row-left">
+                <h4>Remettre à zéro ce groupe</h4>
+                <p>Efface toute la progression FSRS (stabilité, difficulté, intervalles, historique). Les cartes restent dans le groupe mais redeviennent "non étudiées".</p>
+              </div>
+              <button class="btn-secondary" id="btn-reset-group" style="width:100%;margin-top:4px;">Réinitialiser la progression</button>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>Danger</h3>
+            <button class="btn-danger" id="btn-delete-group">Supprimer ce groupe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSION -->
+    <div class="view" id="view-session" style="display:none; flex-direction:column;">
+      <div class="session-header">
+        <button class="icon-btn" id="btn-quit-session">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="session-progress-bar">
+          <div class="session-progress-fill" id="session-progress-fill"></div>
+        </div>
+        <span class="session-count" id="session-count-label"></span>
+      </div>
+      <div class="card-area">
+        <div class="flashcard-display" id="flashcard-display" onclick="App.flipCard()">
+          <div class="card-side-label">QUESTION</div>
+          <div class="card-front-text" id="card-front-text" style="font-size:20px;font-weight:600;line-height:1.4;margin-bottom:4px;"></div>
+          <div id="card-back-wrap" style="display:none">
+            <div style="height:1px;background:var(--border);margin:16px 0;"></div>
+            <div class="card-side-label">RÉPONSE</div>
+            <div class="card-answer" id="card-answer-text"></div>
+            <div class="card-divider" id="card-note-divider" style="display:none;margin-top:10px;"></div>
+            <div class="card-note" id="card-note-text"></div>
+          </div>
+        </div>
+        <div class="tap-hint" id="tap-hint">Appuie pour révéler la réponse</div>
+      </div>
+      <div class="rating-area" id="rating-area" style="display:none; padding: 12px 16px max(16px, env(safe-area-inset-bottom));">
+        <div class="rating-btns">
+          <button class="rating-btn btn-again" onclick="App.rate(1)">
+            <span class="r-label">Again</span>
+            <span class="r-interval" id="interval-1"></span>
+          </button>
+          <button class="rating-btn btn-hard" onclick="App.rate(2)">
+            <span class="r-label">Hard</span>
+            <span class="r-interval" id="interval-2"></span>
+          </button>
+          <button class="rating-btn btn-good" onclick="App.rate(3)">
+            <span class="r-label">Good</span>
+            <span class="r-interval" id="interval-3"></span>
+          </button>
+          <button class="rating-btn btn-easy" onclick="App.rate(4)">
+            <span class="r-label">Easy</span>
+            <span class="r-interval" id="interval-4"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RÉSUMÉ SESSION -->
+    <div class="view" id="view-summary">
+      <div class="summary-content">
+        <div class="summary-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="summary-title" id="summary-title">Session terminée !</div>
+        <div class="summary-sub" id="summary-sub"></div>
+        <div class="summary-grid" id="summary-grid"></div>
+        <button class="btn-primary" onclick="App.goToGroups()">Retour aux groupes</button>
+      </div>
+    </div>
+
+    <!-- CARD DETAIL / EDIT -->
+    <div class="view" id="view-card-detail">
+      <div class="back-btn" id="back-to-group">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        Groupe
+      </div>
+      <div class="card-detail-content" id="card-detail-content"></div>
+    </div>
+
+    <!-- STATS GLOBALES -->
+    <div class="view" id="view-stats">
+      <div class="view-header">
+        <h1>Statistiques</h1>
+      </div>
+      <div class="stats-content" id="global-stats-content"></div>
+    </div>
+
+    <!-- RÉGLAGES -->
+    <div class="view" id="view-settings">
+      <div class="view-header">
+        <h1>Réglages</h1>
+      </div>
+      <div class="settings-content">
+        <div class="settings-section">
+          <h3>Apprentissage</h3>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <h4>Nouvelles cartes/jour</h4>
+              <p>Maximum par défaut (modifiable par groupe)</p>
+            </div>
+            <select class="settings-select" id="setting-new-cards">
+              <option value="10">10</option>
+              <option value="20">20</option>
+              <option value="30" selected>30</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <h4>Rétention cible par défaut</h4>
+              <p>S'applique aux nouveaux groupes</p>
+            </div>
+            <select class="settings-select" id="setting-retention">
+              <option value="0.80">80%</option>
+              <option value="0.85">85%</option>
+              <option value="0.90" selected>90%</option>
+              <option value="0.95">95%</option>
+            </select>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3>Données</h3>
+          <button class="btn-secondary" id="btn-export-all">Exporter toutes mes données</button>
+          <button class="btn-secondary" id="btn-import-all">Restaurer depuis une sauvegarde</button>
+          <input type="file" id="import-all-input" accept=".json" style="display:none">
+        </div>
+        <div class="settings-section">
+          <h3>Stockage</h3>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <h4>Stockage persistant</h4>
+              <p id="persist-status">Vérification…</p>
+            </div>
+            <button class="btn-secondary" id="btn-request-persist" style="width:auto; padding: 6px 12px; font-size: 13px; margin: 0;">Activer</button>
+          </div>
+        </div>
+        <div style="height: 80px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="nav">
+    <button class="nav-btn active" data-view="groups" onclick="App.navigate('groups')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      Groupes
+    </button>
+    <button class="nav-btn" data-view="stats" onclick="App.navigate('stats')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Stats
+    </button>
+    <button class="nav-btn" data-view="settings" onclick="App.navigate('settings')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Réglages
+    </button>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-group">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-close-row">
+      <h2 id="modal-group-title">Nouveau groupe</h2>
+      <button class="icon-btn" onclick="App.closeModal('modal-group')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>TITRE</label>
+      <input type="text" id="group-name-input" placeholder="Ex: Vocabulaire anglais">
+    </div>
+    <div class="form-group">
+      <label>DESCRIPTION</label>
+      <textarea id="group-desc-input" placeholder="Décris ce groupe de cartes…"></textarea>
+    </div>
+    <button class="btn-primary" id="btn-save-group">Créer le groupe</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-card">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-close-row">
+      <h2 id="modal-card-title">Nouvelle carte</h2>
+      <button class="icon-btn" onclick="App.closeModal('modal-card')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="form-group">
+      <label>RECTO (QUESTION)</label>
+      <textarea id="card-front-input" placeholder="La question ou le terme à apprendre" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label>VERSO (RÉPONSE)</label>
+      <textarea id="card-back-input" placeholder="La réponse" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label>NOTE EXPLICATIVE (optionnel)</label>
+      <textarea id="card-note-input" placeholder="Contexte, exemple, mnémotechnique…" rows="3"></textarea>
+    </div>
+    <input type="hidden" id="card-edit-id">
+    <button class="btn-primary" id="btn-save-card">Créer la carte</button>
+    <button class="btn-danger" id="btn-delete-card" style="display:none">Supprimer cette carte</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-close-row">
+      <h2>Importer des cartes</h2>
+      <button class="icon-btn" onclick="App.closeModal('modal-import')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="import-drop" id="import-drop-zone" onclick="document.getElementById('import-file-input').click()">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <p>Appuie pour choisir un fichier
+        <small>Format : titre;réponse;note (TXT ou CSV)</small>
+      </p>
+    </div>
+    <input type="file" id="import-file-input" accept=".txt,.csv" style="display:none">
+    <div id="import-preview" style="display:none">
+      <p style="font-size:14px; color: var(--text2); margin-bottom: 12px;" id="import-preview-text"></p>
+      <button class="btn-primary" id="btn-confirm-import">Importer</button>
+    </div>
+    <button class="btn-secondary" onclick="App.closeModal('modal-import')">Annuler</button>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="modal-quit-session">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 style="margin-bottom:8px;">Quitter la session ?</h2>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:20px;" id="quit-session-info"></p>
+    <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px;margin-bottom:20px;" id="quit-skip-block">
+      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+        <input type="checkbox" id="quit-skip-done" style="margin-top:3px;width:18px;height:18px;accent-color:var(--accent);flex-shrink:0;">
+        <span style="font-size:14px;line-height:1.5;">
+          Ignorer les cartes déjà évaluées dans cette session
+          <span style="display:block;font-size:12px;color:var(--text3);margin-top:2px;">Elles resteront planifiées selon FSRS. Les cartes "Again" repasseront dans ~10 min.</span>
+        </span>
+      </label>
+    </div>
+    <button class="btn-danger" id="btn-confirm-quit">Quitter la session</button>
+    <button class="btn-secondary" id="btn-cancel-quit">Continuer la révision</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="import-all-input-real" accept=".json" style="display:none">
+
+<script>
+// ============================================================
+// FSRS-6 ENGINE — Implémentation fidèle de l'algorithme FSRS
+// Source: https://github.com/open-spaced-repetition/fsrs4anki/wiki
+// ============================================================
+const FSRS = (() => {
+  // Poids par défaut FSRS-6 (entraînés sur 20 000+ utilisateurs)
+  const DEFAULT_WEIGHTS = [
+    0.4072, 1.1829, 3.1262, 15.4722,
+    7.2102, 0.5316, 1.0651, 0.0589,
+    1.5330, 0.1544, 1.0070, 1.9395,
+    0.1100, 0.2900, 2.2700, 0.1600,
+    2.9898, 0.5100, 0.4300
+  ];
+
+  function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+  // Initialisation d'une nouvelle carte selon le rating initial
+  function initCard(rating, w) {
+    const s = initStability(rating, w);
+    const d = initDifficulty(rating, w);
+    return { stability: s, difficulty: d };
+  }
+
+  function initStability(rating, w) {
+    return Math.max(w[rating - 1], 0.1);
+  }
+
+  function initDifficulty(rating, w) {
+    return clamp(w[4] - Math.exp(w[5] * (rating - 1)) + 1, 1, 10);
+  }
+
+  // Retrievability : probabilité de rappel après t jours
+  function retrievability(stability, elapsedDays) {
+    return Math.pow(1 + elapsedDays / (9 * stability), -1);
+  }
+
+  // Prochaine stabilité après une révision réussie (rating >= 2)
+  function nextStabilitySuccess(d, s, r, rating, w) {
+    const hardPenalty = rating === 2 ? w[15] : 1;
+    const easyBonus = rating === 4 ? w[16] : 1;
+    return s * (
+      Math.exp(w[8]) *
+      (11 - d) *
+      Math.pow(s, -w[9]) *
+      (Math.exp((1 - r) * w[10]) - 1) *
+      hardPenalty *
+      easyBonus
+    ) + s;
+  }
+
+  // Prochaine stabilité après oubli (Again)
+  function nextStabilityFailure(d, s, r, w) {
+    return Math.max(
+      w[11] *
+      Math.pow(d, -w[12]) *
+      (Math.pow(s + 1, w[13]) - 1) *
+      Math.exp((1 - r) * w[14]),
+      0.1
+    );
+  }
+
+  // Prochaine difficulté
+  function nextDifficulty(d, rating, w) {
+    const delta = w[6] * (rating === 2 ? 1 : rating === 3 ? 0 : rating === 4 ? -1 : 2);
+    const meanReversion = w[7] * (w[4] - d);
+    return clamp(d - delta + meanReversion, 1, 10);
+  }
+
+  // Intervalle optimal selon la rétention cible
+  function optimalInterval(stability, targetRetention) {
+    const interval = stability * (Math.pow(targetRetention, 1 / -0.5) - 1) * 9;
+    return Math.max(1, Math.round(interval));
+  }
+
+  // Fonction principale : calcule l'état suivant après une révision
+  function schedule(card, rating, elapsedDays, targetRetention, w = DEFAULT_WEIGHTS) {
+    let { stability, difficulty, fsrsState } = card;
+    const isNew = fsrsState === 'new' || !stability;
+
+    let newStability, newDifficulty;
+
+    if (isNew) {
+      const init = initCard(rating, w);
+      newStability = init.stability;
+      newDifficulty = init.difficulty;
+    } else {
+      const r = retrievability(stability, elapsedDays);
+      newDifficulty = nextDifficulty(difficulty, rating, w);
+      if (rating === 1) {
+        newStability = nextStabilityFailure(difficulty, stability, r, w);
+      } else {
+        newStability = nextStabilitySuccess(difficulty, stability, r, rating, w);
+      }
+    }
+
+    newStability = Math.max(newStability, 0.1);
+    newDifficulty = clamp(newDifficulty, 1, 10);
+
+    const interval = rating === 1
+      ? 0  // Again → réapprend dans la session (10 min)
+      : optimalInterval(newStability, targetRetention);
+
+    const now = new Date();
+    let nextReviewAt;
+    if (rating === 1) {
+      nextReviewAt = new Date(now.getTime() + 10 * 60 * 1000); // 10 min
+    } else {
+      nextReviewAt = new Date(now.getTime() + interval * 24 * 60 * 60 * 1000);
+    }
+
+    const newR = retrievability(newStability, interval);
+
+    let newStatus = 'learning';
+    let newFsrsState = 'learning';
+    if (rating === 1) {
+      newFsrsState = 'relearning';
+      newStatus = card.status === 'mastered' ? 'learning' : (card.status || 'learning');
+    } else if (interval >= 21) {
+      newStatus = 'mastered';
+      newFsrsState = 'review';
+    } else {
+      newStatus = 'learning';
+      newFsrsState = 'review';
+    }
+
+    return {
+      stability: newStability,
+      difficulty: newDifficulty,
+      retrievability: newR,
+      nextReviewAt,
+      interval,
+      status: newStatus,
+      fsrsState: newFsrsState
+    };
+  }
+
+  // Prévisualisation des 4 intervalles pour les boutons
+  function previewIntervals(card, targetRetention, w = DEFAULT_WEIGHTS) {
+    return [1, 2, 3, 4].map(rating => {
+      const result = schedule(card, rating, card.elapsedDays || 0, targetRetention, w);
+      return formatInterval(result.rating === 1 ? 0 : result.interval, rating);
+    });
+  }
+
+  function formatInterval(interval, rating) {
+    if (rating === 1) return '10 min';
+    if (interval < 1) return '< 1j';
+    if (interval === 1) return '1 j';
+    if (interval < 30) return interval + ' j';
+    if (interval < 365) return Math.round(interval / 30) + ' mois';
+    return Math.round(interval / 365) + ' an' + (Math.round(interval / 365) > 1 ? 's' : '');
+  }
+
+  // Sélectionne les cartes à réviser pour une session
+  function selectCards(cards, maxNew, targetRetention, w = DEFAULT_WEIGHTS) {
+    const now = new Date();
+    const due = [];
+    const newCards = [];
+    const notDue = [];
+
+    for (const card of cards) {
+      if (!card.nextReviewAt || card.fsrsState === 'new') {
+        newCards.push(card);
+      } else {
+        const nextDate = new Date(card.nextReviewAt);
+        if (nextDate <= now) {
+          due.push(card);
+        } else {
+          notDue.push(card);
+        }
+      }
+    }
+
+    // Trier les dues par date (plus anciennes en premier)
+    due.sort((a, b) => new Date(a.nextReviewAt) - new Date(b.nextReviewAt));
+
+    const toStudy = [...due];
+
+    // Compléter avec des nouvelles cartes si quota non atteint
+    const newToAdd = Math.min(maxNew, newCards.length);
+    toStudy.push(...newCards.slice(0, newToAdd));
+
+    return toStudy;
+  }
+
+  return { schedule, previewIntervals, selectCards, formatInterval, retrievability, DEFAULT_WEIGHTS };
+})();
+
+// ============================================================
+// DB — IndexedDB Repository Layer
+// ============================================================
+const DB = (() => {
+  const DB_NAME = 'flashmind_db';
+  const DB_VERSION = 1;
+  let db = null;
+
+  function open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('groups')) {
+          const gs = d.createObjectStore('groups', { keyPath: 'id' });
+          gs.createIndex('updatedAt', 'updatedAt');
+        }
+        if (!d.objectStoreNames.contains('cards')) {
+          const cs = d.createObjectStore('cards', { keyPath: 'id' });
+          cs.createIndex('groupId', 'groupId');
+          cs.createIndex('nextReviewAt', 'nextReviewAt');
+          cs.createIndex('status', 'status');
+        }
+        if (!d.objectStoreNames.contains('reviews')) {
+          const rs = d.createObjectStore('reviews', { keyPath: 'id' });
+          rs.createIndex('cardId', 'cardId');
+          rs.createIndex('reviewedAt', 'reviewedAt');
+        }
+        if (!d.objectStoreNames.contains('settings')) {
+          d.createObjectStore('settings', { keyPath: 'key' });
+        }
+        if (!d.objectStoreNames.contains('sessions')) {
+          d.createObjectStore('sessions', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function tx(stores, mode = 'readonly') {
+    return db.transaction(stores, mode);
+  }
+
+  function getAll(store, indexName, value) {
+    return new Promise((resolve, reject) => {
+      const t = tx(store);
+      const s = t.objectStore(store);
+      const req = indexName
+        ? s.index(indexName).getAll(value)
+        : s.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function get(store, key) {
+    return new Promise((resolve, reject) => {
+      const req = tx(store).objectStore(store).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function put(store, item) {
+    return new Promise((resolve, reject) => {
+      const req = tx(store, 'readwrite').objectStore(store).put(item);
+      req.onsuccess = () => resolve(item);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function del(store, key) {
+    return new Promise((resolve, reject) => {
+      const req = tx(store, 'readwrite').objectStore(store).delete(key);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function putMany(store, items) {
+    return new Promise((resolve, reject) => {
+      const t = db.transaction(store, 'readwrite');
+      const s = t.objectStore(store);
+      items.forEach(item => s.put(item));
+      t.oncomplete = resolve;
+      t.onerror = () => reject(t.error);
+    });
+  }
+
+  function clearStore(store) {
+    return new Promise((resolve, reject) => {
+      const req = tx(store, 'readwrite').objectStore(store).clear();
+      req.onsuccess = resolve;
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  return { open, getAll, get, put, del, putMany, clearStore };
+})();
+
+// ============================================================
+// REPOSITORIES
+// ============================================================
+const GroupRepo = {
+  getAll: () => DB.getAll('groups'),
+  get: (id) => DB.get('groups', id),
+  save: (g) => DB.put('groups', { ...g, updatedAt: new Date().toISOString() }),
+  delete: async (id) => {
+    await DB.del('groups', id);
+    const cards = await DB.getAll('cards', 'groupId', id);
+    for (const c of cards) {
+      await DB.del('cards', c.id);
+      const reviews = await DB.getAll('reviews', 'cardId', c.id);
+      for (const r of reviews) await DB.del('reviews', r.id);
+    }
+  }
+};
+
+const CardRepo = {
+  getAll: () => DB.getAll('cards'),
+  getByGroup: (groupId) => DB.getAll('cards', 'groupId', groupId),
+  get: (id) => DB.get('cards', id),
+  save: (c) => DB.put('cards', c),
+  saveMany: (cards) => DB.putMany('cards', cards),
+  delete: async (id) => {
+    await DB.del('cards', id);
+    const reviews = await DB.getAll('reviews', 'cardId', id);
+    for (const r of reviews) await DB.del('reviews', r.id);
+  }
+};
+
+const ReviewRepo = {
+  getByCard: (cardId) => DB.getAll('reviews', 'cardId', cardId),
+  getAll: () => DB.getAll('reviews'),
+  save: (r) => DB.put('reviews', r)
+};
+
+const SettingsRepo = {
+  get: async (key, defaultVal) => {
+    const r = await DB.get('settings', key);
+    return r ? r.value : defaultVal;
+  },
+  set: (key, value) => DB.put('settings', { key, value })
+};
+
+const SessionRepo = {
+  get: (id) => DB.get('sessions', id),
+  save: (s) => DB.put('sessions', s),
+  delete: (id) => DB.del('sessions', id)
+};
+
+// ============================================================
+// SERVICES
+// ============================================================
+const StatsService = {
+  async getGroupStats(groupId) {
+    const cards = await CardRepo.getByGroup(groupId);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reviews = await ReviewRepo.getAll();
+    const todayReviews = reviews.filter(r => new Date(r.reviewedAt) >= today);
+
+    const due = cards.filter(c => c.nextReviewAt && new Date(c.nextReviewAt) <= now);
+    const newCards = cards.filter(c => !c.nextReviewAt || c.fsrsState === 'new');
+    const learning = cards.filter(c => c.status === 'learning');
+    const mastered = cards.filter(c => c.status === 'mastered');
+
+    const avgStability = cards.length
+      ? cards.reduce((s, c) => s + (c.stability || 0), 0) / cards.length
+      : 0;
+    const avgDifficulty = cards.length
+      ? cards.reduce((s, c) => s + (c.difficulty || 0), 0) / cards.length
+      : 0;
+
+    // Charge prévisionnelle 7 jours
+    const forecast = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(today.getTime() + i * 86400000);
+      const dayEnd = new Date(day.getTime() + 86400000);
+      const count = cards.filter(c => {
+        if (!c.nextReviewAt) return false;
+        const d = new Date(c.nextReviewAt);
+        return d >= day && d < dayEnd;
+      }).length;
+      forecast.push({ day: i === 0 ? 'Auj.' : i + 'j', count });
+    }
+
+    const cardReviews = reviews.filter(r => cards.some(c => c.id === r.cardId));
+    const successReviews = cardReviews.filter(r => r.rating >= 3);
+    const retentionRate = cardReviews.length > 0
+      ? successReviews.length / cardReviews.length
+      : null;
+
+    return {
+      total: cards.length, newCards: newCards.length,
+      learning: learning.length, mastered: mastered.length,
+      due: due.length, todayReviews: todayReviews.length,
+      avgStability, avgDifficulty, forecast, retentionRate
+    };
+  },
+
+  async getGlobalStats() {
+    const groups = await GroupRepo.getAll();
+    const cards = await CardRepo.getAll();
+    const reviews = await ReviewRepo.getAll();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayReviews = reviews.filter(r => new Date(r.reviewedAt) >= today);
+
+    const due = cards.filter(c => c.nextReviewAt && new Date(c.nextReviewAt) <= now);
+    const successReviews = reviews.filter(r => r.rating >= 3);
+    const retentionRate = reviews.length > 0
+      ? successReviews.length / reviews.length
+      : null;
+
+    const forecast = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(today.getTime() + i * 86400000);
+      const dayEnd = new Date(day.getTime() + 86400000);
+      const count = cards.filter(c => {
+        if (!c.nextReviewAt) return false;
+        const d = new Date(c.nextReviewAt);
+        return d >= day && d < dayEnd;
+      }).length;
+      forecast.push({ day: i === 0 ? 'Auj.' : i + 'j', count });
+    }
+
+    return {
+      groups: groups.length,
+      total: cards.length,
+      newCards: cards.filter(c => !c.nextReviewAt || c.fsrsState === 'new').length,
+      learning: cards.filter(c => c.status === 'learning').length,
+      mastered: cards.filter(c => c.status === 'mastered').length,
+      due: due.length,
+      todayReviews: todayReviews.length,
+      totalReviews: reviews.length,
+      retentionRate, forecast
+    };
+  }
+};
+
+const ImportExportService = {
+  async exportAll() {
+    const groups = await GroupRepo.getAll();
+    const cards = await CardRepo.getAll();
+    const reviews = await ReviewRepo.getAll();
+    const settings = {
+      targetRetention: await SettingsRepo.get('targetRetention', 0.90),
+      maxNewCardsPerDay: await SettingsRepo.get('maxNewCardsPerDay', 30)
+    };
+
+    const data = {
+      exportVersion: '1.0',
+      exportedAt: new Date().toISOString(),
+      appName: 'FlashMind',
+      settings,
+      groups: groups.map(g => ({
+        ...g,
+        cards: cards
+          .filter(c => c.groupId === g.id)
+          .map(c => ({
+            ...c,
+            reviewHistory: reviews.filter(r => r.cardId === c.id)
+          }))
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    a.href = url;
+    a.download = `flashmind-export-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  async importAll(jsonData) {
+    const data = JSON.parse(jsonData);
+    if (data.appName !== 'FlashMind' || !data.exportVersion) {
+      throw new Error('Fichier de sauvegarde invalide');
+    }
+
+    // Vider et reconstruire
+    await DB.clearStore('groups');
+    await DB.clearStore('cards');
+    await DB.clearStore('reviews');
+    await DB.clearStore('settings');
+
+    if (data.settings) {
+      await SettingsRepo.set('targetRetention', data.settings.targetRetention || 0.90);
+      await SettingsRepo.set('maxNewCardsPerDay', data.settings.maxNewCardsPerDay || 30);
+    }
+
+    const allCards = [];
+    const allReviews = [];
+
+    for (const group of (data.groups || [])) {
+      const { cards: groupCards, ...groupData } = group;
+      await GroupRepo.save(groupData);
+      for (const card of (groupCards || [])) {
+        const { reviewHistory, ...cardData } = card;
+        allCards.push(cardData);
+        allReviews.push(...(reviewHistory || []));
+      }
+    }
+
+    if (allCards.length) await DB.putMany('cards', allCards);
+    if (allReviews.length) await DB.putMany('reviews', allReviews);
+    return data.groups?.length || 0;
+  },
+
+  parseCSV(text) {
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const cards = [];
+    for (const line of lines) {
+      const parts = line.split(';');
+      if (parts.length >= 2) {
+        cards.push({
+          front: (parts[0] || '').trim(),
+          back: (parts[1] || '').trim(),
+          note: (parts[2] || '').trim()
+        });
+      }
+    }
+    return cards.filter(c => c.front && c.back);
+  }
+};
+
+// ============================================================
+// MAIN APP CONTROLLER
+// ============================================================
+const App = (() => {
+  let state = {
+    currentView: 'groups',
+    currentGroupId: null,
+    session: null,
+    cardFlipped: false,
+    importedCards: [],
+    editingGroupId: null
+  };
+
+  function uuid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  function showToast(msg, duration = 2200) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), duration);
+  }
+
+  function navigate(viewName) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    const view = document.getElementById('view-' + viewName);
+    if (view) view.classList.add('active');
+    const navBtn = document.querySelector(`[data-view="${viewName}"]`);
+    if (navBtn) navBtn.classList.add('active');
+    document.getElementById('nav').style.display = '';
+    state.currentView = viewName;
+    state.currentActivePanel = viewName;
+    if (viewName === 'stats') renderGlobalStats();
+  }
+
+  function showGroupDetail(groupId) {
+    state.currentGroupId = groupId;
+    state.currentActivePanel = 'group-detail';
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-session').style.display = 'none';
+    document.getElementById('view-group-detail').classList.add('active');
+    document.getElementById('nav').style.display = '';
+    renderGroupDetail();
+  }
+
+  function showSession() {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const sv = document.getElementById('view-session');
+    sv.style.display = 'flex';
+    sv.classList.add('active');
+    document.getElementById('nav').style.display = 'none';
+  }
+
+  function showSummary() {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-session').style.display = 'none';
+    document.getElementById('view-summary').classList.add('active');
+    document.getElementById('nav').style.display = '';
+  }
+
+  function showCardDetail(cardId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-card-detail').classList.add('active');
+    document.getElementById('nav').style.display = '';
+    renderCardDetail(cardId);
+  }
+
+  function goToGroups() {
+    navigate('groups');
+    renderGroups();
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  // ---- RENDER FUNCTIONS ----
+
+  async function renderGroups() {
+    const groups = await GroupRepo.getAll();
+    const cards = await CardRepo.getAll();
+    const now = new Date();
+
+    const container = document.getElementById('group-list');
+    const subtitle = document.getElementById('groups-subtitle');
+
+    const totalDue = cards.filter(c => c.nextReviewAt && new Date(c.nextReviewAt) <= now).length;
+    subtitle.textContent = groups.length === 0
+      ? 'Aucun groupe — crée le premier !'
+      : `${groups.length} groupe${groups.length > 1 ? 's' : ''} · ${totalDue} carte${totalDue > 1 ? 's' : ''} à réviser`;
+
+    if (groups.length === 0) {
+      container.innerHTML = `<div class="empty-state">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        <h3>Aucun groupe</h3>
+        <p>Appuie sur + pour créer ton premier groupe de flashcards</p>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = groups.map(g => {
+      const gc = cards.filter(c => c.groupId === g.id);
+      const due = gc.filter(c => c.nextReviewAt && new Date(c.nextReviewAt) <= now).length;
+      const newC = gc.filter(c => !c.nextReviewAt || c.fsrsState === 'new').length;
+      const learning = gc.filter(c => c.status === 'learning').length;
+      const mastered = gc.filter(c => c.status === 'mastered').length;
+      return `<div class="group-card" onclick="App.showGroupDetail('${g.id}')">
+        <div class="group-card-header">
+          <div>
+            <h3>${escHtml(g.title)}</h3>
+            ${g.description ? `<p>${escHtml(g.description)}</p>` : ''}
+          </div>
+        </div>
+        <div class="group-card-stats">
+          ${due > 0 ? `<span class="stat-pill pill-due">⚡ ${due} à réviser</span>` : ''}
+          ${newC > 0 ? `<span class="stat-pill pill-new">${newC} nouvelles</span>` : ''}
+          ${learning > 0 ? `<span class="stat-pill pill-learning">${learning} en cours</span>` : ''}
+          ${mastered > 0 ? `<span class="stat-pill pill-mastered">${mastered} maîtrisées</span>` : ''}
+          ${gc.length === 0 ? '<span class="stat-pill" style="background:var(--bg3);color:var(--text3)">Vide</span>' : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function renderGroupDetail() {
+    const group = await GroupRepo.get(state.currentGroupId);
+    if (!group) return;
+
+    document.getElementById('detail-title').textContent = group.title;
+    document.getElementById('detail-desc').textContent = group.description || '';
+
+    document.getElementById('group-retention-select').value = parseFloat(group.targetRetention || 0.90).toFixed(2);
+
+    const stats = await StatsService.getGroupStats(state.currentGroupId);
+    const statsEl = document.getElementById('detail-stats');
+    statsEl.innerHTML = `
+      ${stats.due > 0 ? `<span class="stat-pill pill-due">⚡ ${stats.due} à réviser</span>` : ''}
+      <span class="stat-pill pill-new">${stats.newCards} nouvelles</span>
+      <span class="stat-pill pill-learning">${stats.learning} en cours</span>
+      <span class="stat-pill pill-mastered">${stats.mastered} maîtrisées</span>
+    `;
+
+    const canStart = stats.due > 0 || stats.newCards > 0;
+    const btn = document.getElementById('btn-start-session');
+    btn.disabled = !canStart;
+    btn.textContent = canStart
+      ? `Réviser (${stats.due + stats.newCards} cartes)`
+      : 'Rien à réviser pour l\'instant';
+
+    await renderCardList();
+    await renderGroupStats(stats);
+  }
+
+  async function renderCardList() {
+    const cards = await CardRepo.getByGroup(state.currentGroupId);
+    const container = document.getElementById('card-list');
+
+    if (cards.length === 0) {
+      container.innerHTML = `<div class="empty-state">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" stroke-linecap="round" stroke-linejoin="round"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 9h18M9 21V9"/></svg>
+        <h3>Aucune carte</h3>
+        <p>Appuie sur + pour créer ta première carte</p>
+      </div>`;
+      return;
+    }
+
+    const dotClass = { new: 'dot-new', learning: 'dot-learning', mastered: 'dot-mastered' };
+    container.innerHTML = cards.map(c => `
+      <div class="flashcard-item" onclick="App.showCardDetail('${c.id}')">
+        <div class="flashcard-item-left">
+          <h4>${escHtml(c.front)}</h4>
+          <p>${escHtml(c.back.substring(0, 60))}${c.back.length > 60 ? '…' : ''}</p>
+        </div>
+        <div class="status-dot ${dotClass[c.status] || 'dot-new'}"></div>
+      </div>
+    `).join('');
+  }
+
+  async function renderGroupStats(stats) {
+    const container = document.getElementById('group-stats-content');
+    const maxForecast = Math.max(...stats.forecast.map(f => f.count), 1);
+    container.innerHTML = `
+      <div class="stats-section">
+        <h3>Vue d'ensemble</h3>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="s-val">${stats.total}</div><div class="s-label">Total cartes</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--red)">${stats.due}</div><div class="s-label">À réviser</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--amber)">${stats.learning}</div><div class="s-label">En apprentissage</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--green)">${stats.mastered}</div><div class="s-label">Maîtrisées</div></div>
+        </div>
+      </div>
+      <div class="stats-section">
+        <h3>Métriques FSRS</h3>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="s-val">${stats.avgStability.toFixed(1)}j</div><div class="s-label">Stabilité moyenne</div></div>
+          <div class="stat-card"><div class="s-val">${stats.avgDifficulty.toFixed(1)}</div><div class="s-label">Difficulté moyenne</div></div>
+          <div class="stat-card"><div class="s-val">${stats.todayReviews}</div><div class="s-label">Révisions aujourd'hui</div></div>
+          <div class="stat-card"><div class="s-val">${stats.retentionRate !== null ? Math.round(stats.retentionRate * 100) + '%' : '—'}</div><div class="s-label">Rétention observée</div></div>
+        </div>
+      </div>
+      <div class="stats-section">
+        <h3>Charge prévue (7 jours)</h3>
+        <div class="forecast-bar-wrap">
+          ${stats.forecast.map(f => `
+            <div class="forecast-item">
+              <span class="forecast-day">${f.day}</span>
+              <div class="forecast-bar-bg"><div class="forecast-bar" style="width:${maxForecast > 0 ? Math.round(f.count/maxForecast*100) : 0}%"></div></div>
+              <span class="forecast-n">${f.count}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  async function renderGlobalStats() {
+    const stats = await StatsService.getGlobalStats();
+    const container = document.getElementById('global-stats-content');
+    const maxForecast = Math.max(...stats.forecast.map(f => f.count), 1);
+    container.innerHTML = `
+      <div class="stats-section">
+        <h3>Global</h3>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="s-val">${stats.groups}</div><div class="s-label">Groupes</div></div>
+          <div class="stat-card"><div class="s-val">${stats.total}</div><div class="s-label">Cartes total</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--red)">${stats.due}</div><div class="s-label">À réviser</div></div>
+          <div class="stat-card"><div class="s-val">${stats.todayReviews}</div><div class="s-label">Révisions auj.</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--blue)">${stats.newCards}</div><div class="s-label">Non étudiées</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--amber)">${stats.learning}</div><div class="s-label">En apprentissage</div></div>
+          <div class="stat-card"><div class="s-val" style="color:var(--green)">${stats.mastered}</div><div class="s-label">Maîtrisées</div></div>
+          <div class="stat-card"><div class="s-val">${stats.retentionRate !== null ? Math.round(stats.retentionRate * 100) + '%' : '—'}</div><div class="s-label">Rétention observée</div></div>
+        </div>
+      </div>
+      <div class="stats-section">
+        <h3>Charge prévue (7 jours)</h3>
+        <div class="forecast-bar-wrap">
+          ${stats.forecast.map(f => `
+            <div class="forecast-item">
+              <span class="forecast-day">${f.day}</span>
+              <div class="forecast-bar-bg"><div class="forecast-bar" style="width:${Math.round(f.count/maxForecast*100)}%"></div></div>
+              <span class="forecast-n">${f.count}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="height: 80px;"></div>
+    `;
+  }
+
+  async function renderCardDetail(cardId) {
+    const card = await CardRepo.get(cardId);
+    if (!card) return;
+    const reviews = await ReviewRepo.getByCard(cardId);
+    const container = document.getElementById('card-detail-content');
+
+    const statusLabel = { new: 'Non étudiée', learning: 'En apprentissage', mastered: 'Maîtrisée' };
+    const statusColor = { new: 'var(--blue)', learning: 'var(--amber)', mastered: 'var(--green)' };
+    const r = card.stability ? FSRS.retrievability(card.stability, Math.max(0, (new Date() - new Date(card.lastReviewedAt || card.createdAt)) / 86400000)) : null;
+
+    container.innerHTML = `
+      <div class="detail-field"><div class="df-label">STATUT</div>
+        <div class="df-value large" style="color:${statusColor[card.status] || 'var(--text2)'}">● ${statusLabel[card.status] || 'Non étudiée'}</div></div>
+      <div class="detail-field"><div class="df-label">RECTO</div><div class="df-value large">${escHtml(card.front)}</div></div>
+      <div class="detail-field"><div class="df-label">VERSO</div><div class="df-value">${escHtml(card.back)}</div></div>
+      ${card.note ? `<div class="detail-field"><div class="df-label">NOTE</div><div class="df-value">${escHtml(card.note)}</div></div>` : ''}
+      <div class="fsrs-row">
+        <div class="fsrs-stat"><div class="fs-val">${card.difficulty ? card.difficulty.toFixed(1) : '—'}</div><div class="fs-label">Difficulté</div></div>
+        <div class="fsrs-stat"><div class="fs-val">${card.stability ? card.stability.toFixed(1) + 'j' : '—'}</div><div class="fs-label">Stabilité</div></div>
+        <div class="fsrs-stat"><div class="fs-val">${r !== null ? Math.round(r * 100) + '%' : '—'}</div><div class="fs-label">Rappel</div></div>
+      </div>
+      <div class="stats-grid" style="margin-bottom: 8px;">
+        <div class="stat-card"><div class="s-val">${card.totalReviews || 0}</div><div class="s-label">Révisions totales</div></div>
+        <div class="stat-card"><div class="s-val">${card.totalForgotten || 0}</div><div class="s-label">Oublis</div></div>
+      </div>
+      <div class="detail-field"><div class="df-label">CRÉÉE LE</div><div class="df-value">${formatDate(card.createdAt)}</div></div>
+      ${card.lastReviewedAt ? `<div class="detail-field"><div class="df-label">DERNIÈRE RÉVISION</div><div class="df-value">${formatDate(card.lastReviewedAt)}</div></div>` : ''}
+      ${card.nextReviewAt ? `<div class="detail-field"><div class="df-label">PROCHAINE RÉVISION</div><div class="df-value">${formatDate(card.nextReviewAt)}</div></div>` : ''}
+      <button class="btn-secondary" onclick="App.openEditCard('${card.id}')" style="margin-top: 8px;">Modifier cette carte</button>
+      <div style="height: 80px;"></div>
+    `;
+  }
+
+  // ---- SESSION ----
+
+  async function startSession(groupId) {
+    const group = await GroupRepo.get(groupId);
+    const maxNew = await SettingsRepo.get('maxNewCardsPerDay', 30);
+    const targetRetention = group.targetRetention || 0.90;
+    const cards = await CardRepo.getByGroup(groupId);
+
+    const queue = FSRS.selectCards(cards, maxNew, targetRetention);
+
+    if (queue.length === 0) {
+      showToast('Aucune carte à réviser pour l\'instant');
+      return;
+    }
+
+    state.session = {
+      groupId,
+      queue: [...queue],
+      originalQueue: [...queue],
+      current: 0,
+      results: { again: 0, hard: 0, good: 0, easy: 0 },
+      targetRetention,
+      startedAt: new Date().toISOString()
+    };
+
+    state.cardFlipped = false;
+    showSession();
+    renderSessionCard();
+  }
+
+  async function renderSessionCard() {
+    const s = state.session;
+    if (!s) return;
+
+    const total = s.originalQueue.length;
+    const done = s.current;
+    const progress = total > 0 ? (done / total) * 100 : 0;
+
+    document.getElementById('session-progress-fill').style.width = progress + '%';
+    document.getElementById('session-count-label').textContent = `${done}/${total}`;
+
+    if (s.current >= s.queue.length) {
+      showSessionSummary();
+      return;
+    }
+
+    const card = s.queue[s.current];
+    state.cardFlipped = false;
+
+    document.getElementById('card-front-text').textContent = card.front;
+    document.getElementById('card-back-wrap').style.display = 'none';
+    document.getElementById('tap-hint').style.display = 'block';
+    document.getElementById('rating-area').style.display = 'none';
+
+    // Pré-calculer les intervalles pour affichage
+    const now = new Date();
+    const elapsedDays = card.lastReviewedAt
+      ? (now - new Date(card.lastReviewedAt)) / 86400000
+      : 0;
+    const cardWithElapsed = { ...card, elapsedDays };
+
+    [1, 2, 3, 4].forEach(rating => {
+      const result = FSRS.schedule(cardWithElapsed, rating, elapsedDays, s.targetRetention);
+      const label = rating === 1 ? '10 min' : FSRS.formatInterval(result.interval);
+      document.getElementById(`interval-${rating}`).textContent = label;
+    });
+  }
+
+  function flipCard() {
+    if (state.cardFlipped) return;
+    state.cardFlipped = true;
+
+    const card = state.session.queue[state.session.current];
+    document.getElementById('card-back-wrap').style.display = 'block';
+
+    document.getElementById('card-answer-text').textContent = card.back;
+
+    const noteDiv = document.getElementById('card-note-text');
+    const noteDivider = document.getElementById('card-note-divider');
+    if (card.note) {
+      noteDiv.textContent = card.note;
+      noteDiv.style.display = 'block';
+      noteDivider.style.display = 'block';
+    } else {
+      noteDiv.style.display = 'none';
+      noteDivider.style.display = 'none';
+    }
+
+    document.getElementById('tap-hint').style.display = 'none';
+    document.getElementById('rating-area').style.display = 'block';
+
+    document.getElementById('flashcard-display').classList.add('card-flip');
+    setTimeout(() => document.getElementById('flashcard-display').classList.remove('card-flip'), 300);
+  }
+
+  async function rate(rating) {
+    if (!state.cardFlipped) return;
+    const s = state.session;
+    const card = { ...s.queue[s.current] };
+    const now = new Date();
+
+    const elapsedDays = card.lastReviewedAt
+      ? (now - new Date(card.lastReviewedAt)) / 86400000
+      : 0;
+
+    const result = FSRS.schedule(card, rating, elapsedDays, s.targetRetention);
+
+    // Log de révision
+    const reviewLog = {
+      id: uuid(),
+      cardId: card.id,
+      reviewedAt: now.toISOString(),
+      rating,
+      stabilityBefore: card.stability || 0,
+      difficultyBefore: card.difficulty || 0,
+      retrievabilityBefore: card.retrievability || 0,
+      stabilityAfter: result.stability,
+      difficultyAfter: result.difficulty,
+      elapsedDays,
+      scheduledDays: result.interval
+    };
+    await ReviewRepo.save(reviewLog);
+
+    // Mise à jour de la carte
+    const updatedCard = {
+      ...card,
+      stability: result.stability,
+      difficulty: result.difficulty,
+      retrievability: result.retrievability,
+      nextReviewAt: result.nextReviewAt.toISOString(),
+      lastReviewedAt: now.toISOString(),
+      status: result.status,
+      fsrsState: result.fsrsState,
+      totalReviews: (card.totalReviews || 0) + 1,
+      totalForgotten: (card.totalForgotten || 0) + (rating === 1 ? 1 : 0)
+    };
+    await CardRepo.save(updatedCard);
+
+    // Stats session
+    const ratingKey = ['', 'again', 'hard', 'good', 'easy'][rating];
+    s.results[ratingKey]++;
+
+    // Si Again → remettre la carte en fin de file
+    if (rating === 1) {
+      s.queue.push(updatedCard);
+    }
+
+    s.current++;
+    state.cardFlipped = false;
+    renderSessionCard();
+  }
+
+  function showSessionSummary() {
+    const s = state.session;
+    const total = s.results.again + s.results.hard + s.results.good + s.results.easy;
+
+    document.getElementById('summary-sub').textContent = `${total} cartes révisées`;
+    document.getElementById('summary-grid').innerHTML = `
+      <div class="summary-stat"><div class="s-val" style="color:var(--red)">${s.results.again}</div><div class="s-label">Again</div></div>
+      <div class="summary-stat"><div class="s-val" style="color:var(--amber)">${s.results.hard}</div><div class="s-label">Hard</div></div>
+      <div class="summary-stat"><div class="s-val" style="color:var(--blue)">${s.results.good}</div><div class="s-label">Good</div></div>
+      <div class="summary-stat"><div class="s-val" style="color:var(--green)">${s.results.easy}</div><div class="s-label">Easy</div></div>
+    `;
+    showSummary();
+  }
+
+  // ---- CRUD ----
+
+  async function saveGroup(editId = null) {
+    const title = document.getElementById('group-name-input').value.trim();
+    const desc = document.getElementById('group-desc-input').value.trim();
+    if (!title) { showToast('Le titre est obligatoire'); return; }
+
+    const defaultRetention = await SettingsRepo.get('targetRetention', 0.90);
+
+    if (editId) {
+      const existing = await GroupRepo.get(editId);
+      await GroupRepo.save({ ...existing, title, description: desc });
+      showToast('Groupe modifié');
+    } else {
+      await GroupRepo.save({
+        id: uuid(), title, description: desc,
+        createdAt: new Date().toISOString(),
+        targetRetention: defaultRetention
+      });
+      showToast('Groupe créé');
+    }
+
+    closeModal('modal-group');
+    if (state.currentView === 'groups') await renderGroups();
+    else await renderGroupDetail();
+  }
+
+  async function saveCard(editId = null) {
+    const front = document.getElementById('card-front-input').value.trim();
+    const back = document.getElementById('card-back-input').value.trim();
+    const note = document.getElementById('card-note-input').value.trim();
+    if (!front || !back) { showToast('Recto et verso sont obligatoires'); return; }
+
+    if (editId) {
+      const existing = await CardRepo.get(editId);
+      await CardRepo.save({ ...existing, front, back, note });
+      showToast('Carte modifiée');
+    } else {
+      await CardRepo.save({
+        id: uuid(), groupId: state.currentGroupId,
+        front, back, note,
+        status: 'new', fsrsState: 'new',
+        createdAt: new Date().toISOString(),
+        stability: null, difficulty: null, retrievability: null,
+        nextReviewAt: null, lastReviewedAt: null,
+        totalReviews: 0, totalForgotten: 0
+      });
+      showToast('Carte créée');
+    }
+
+    closeModal('modal-card');
+    await renderGroupDetail();
+  }
+
+  async function deleteCard(cardId) {
+    const cardToDelete = await CardRepo.get(cardId);
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h2 style="margin-bottom:8px;">Supprimer cette carte ?</h2>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:20px;">
+          La carte <strong>${cardToDelete.front}</strong> et tout son historique de révision seront définitivement supprimés.
+        </p>
+        <button class="btn-danger" id="confirm-delete-card-btn">Supprimer</button>
+        <button class="btn-secondary" id="cancel-delete-card-btn">Annuler</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    document.getElementById('cancel-delete-card-btn').addEventListener('click', () => overlay.remove());
+    document.getElementById('confirm-delete-card-btn').addEventListener('click', async () => {
+      overlay.remove();
+      await CardRepo.delete(cardId);
+      closeModal('modal-card');
+      showToast('Carte supprimée');
+      showGroupDetail(state.currentGroupId);
+    });
+  }
+
+  async function deleteGroup() {
+    const group = await GroupRepo.get(state.currentGroupId);
+    const cards = await CardRepo.getByGroup(state.currentGroupId);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.innerHTML = `
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h2 style="margin-bottom:8px;">Supprimer ce groupe ?</h2>
+        <p style="font-size:14px;color:var(--text2);margin-bottom:20px;">
+          Le groupe <strong>${group.title}</strong> et ses <strong>${cards.length} carte${cards.length > 1 ? 's' : ''}</strong> seront définitivement supprimés, ainsi que tout leur historique de révision. Cette action est irréversible.
+        </p>
+        <button class="btn-danger" id="confirm-delete-group-btn">Supprimer définitivement</button>
+        <button class="btn-secondary" id="cancel-delete-group-btn">Annuler</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    document.getElementById('cancel-delete-group-btn').addEventListener('click', () => overlay.remove());
+    document.getElementById('confirm-delete-group-btn').addEventListener('click', async () => {
+      overlay.remove();
+      await GroupRepo.delete(state.currentGroupId);
+      showToast('Groupe supprimé');
+      navigate('groups');
+      await renderGroups();
+    });
+  }
+
+  // ---- IMPORT ----
+
+  function openNewGroupModal() {
+    state.editingGroupId = null;
+    document.getElementById('modal-group-title').textContent = 'Nouveau groupe';
+    document.getElementById('group-name-input').value = '';
+    document.getElementById('group-desc-input').value = '';
+    document.getElementById('btn-save-group').textContent = 'Créer le groupe';
+    openModal('modal-group');
+  }
+
+  async function openEditGroup() {
+    const group = await GroupRepo.get(state.currentGroupId);
+    state.editingGroupId = state.currentGroupId;
+    document.getElementById('modal-group-title').textContent = 'Modifier le groupe';
+    document.getElementById('group-name-input').value = group.title;
+    document.getElementById('group-desc-input').value = group.description || '';
+    document.getElementById('btn-save-group').textContent = 'Enregistrer';
+    openModal('modal-group');
+  }
+
+  function openNewCardModal() {
+    document.getElementById('modal-card-title').textContent = 'Nouvelle carte';
+    document.getElementById('card-front-input').value = '';
+    document.getElementById('card-back-input').value = '';
+    document.getElementById('card-note-input').value = '';
+    document.getElementById('card-edit-id').value = '';
+    document.getElementById('btn-save-card').textContent = 'Créer la carte';
+    document.getElementById('btn-delete-card').style.display = 'none';
+    openModal('modal-card');
+  }
+
+  async function openEditCard(cardId) {
+    const card = await CardRepo.get(cardId);
+    document.getElementById('modal-card-title').textContent = 'Modifier la carte';
+    document.getElementById('card-front-input').value = card.front;
+    document.getElementById('card-back-input').value = card.back;
+    document.getElementById('card-note-input').value = card.note || '';
+    document.getElementById('card-edit-id').value = cardId;
+    document.getElementById('btn-save-card').textContent = 'Enregistrer';
+    document.getElementById('btn-delete-card').style.display = 'block';
+    openModal('modal-card');
+  }
+
+  // ---- SETTINGS ----
+
+  async function initSettings() {
+    const retention = await SettingsRepo.get('targetRetention', 0.90);
+    const maxNew = await SettingsRepo.get('maxNewCardsPerDay', 30);
+    document.getElementById('setting-retention').value = retention;
+    document.getElementById('setting-new-cards').value = maxNew;
+
+    // Vérifier persistance
+    if (navigator.storage && navigator.storage.persisted) {
+      const persisted = await navigator.storage.persisted();
+      document.getElementById('persist-status').textContent = persisted
+        ? '✓ Stockage protégé actif'
+        : 'Non protégé — cliquer pour activer';
+      document.getElementById('btn-request-persist').style.display = persisted ? 'none' : '';
+    } else {
+      document.getElementById('persist-status').textContent = 'Non supporté sur cet appareil';
+      document.getElementById('btn-request-persist').style.display = 'none';
+    }
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ---- INIT ----
+
+  async function init() {
+    await DB.open();
+
+    // Demander persistance automatiquement
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persisted().then(p => { if (!p) navigator.storage.persist(); });
+    }
+
+    await renderGroups();
+    await initSettings();
+
+    // FAB contextuel
+    document.getElementById('btn-save-group').addEventListener('click', () => {
+      saveGroup(state.editingGroupId);
+    });
+    document.getElementById('btn-save-card').addEventListener('click', () => {
+      const editId = document.getElementById('card-edit-id').value;
+      saveCard(editId || null);
+    });
+    document.getElementById('btn-delete-card').addEventListener('click', () => {
+      const editId = document.getElementById('card-edit-id').value;
+      if (editId) deleteCard(editId);
+    });
+    document.getElementById('back-to-groups').addEventListener('click', () => {
+      navigate('groups');
+      renderGroups();
+    });
+    document.getElementById('back-to-group').addEventListener('click', () => {
+      showGroupDetail(state.currentGroupId);
+    });
+    document.getElementById('btn-start-session').addEventListener('click', () => {
+      startSession(state.currentGroupId);
+    });
+    document.getElementById('btn-quit-session').addEventListener('click', () => {
+      const s = state.session;
+      if (!s) { showGroupDetail(state.currentGroupId); return; }
+      const done = s.current;
+      const total = s.originalQueue.length;
+      const again = s.results.again || 0;
+      let info = `Tu as révisé ${done} carte${done > 1 ? 's' : ''} sur ${total}.`;
+      if (again > 0) info += ` (dont ${again} marquée${again > 1 ? 's' : ''} "Again" — repassera dans ~10 min)`;
+      document.getElementById('quit-session-info').textContent = info;
+      document.getElementById('quit-skip-done').checked = false;
+      // Masquer l'option si aucune carte traitée
+      document.getElementById('quit-skip-block').style.display = done > 0 ? 'block' : 'none';
+      openModal('modal-quit-session');
+    });
+
+    document.getElementById('btn-cancel-quit').addEventListener('click', () => {
+      closeModal('modal-quit-session');
+    });
+
+    document.getElementById('btn-confirm-quit').addEventListener('click', async () => {
+      const s = state.session;
+      const skipDone = document.getElementById('quit-skip-done').checked;
+      closeModal('modal-quit-session');
+
+      if (skipDone && s) {
+        // Annuler les mises à jour FSRS des cartes déjà évaluées dans cette session
+        const doneIds = s.originalQueue.slice(0, s.current).map(c => c.id);
+        for (const id of doneIds) {
+          const original = s.originalQueue.find(c => c.id === id);
+          if (original) await CardRepo.save(original);
+        }
+        showToast('Session annulée — cartes restaurées');
+      } else {
+        showToast('Session interrompue');
+      }
+
+      state.session = null;
+      showGroupDetail(state.currentGroupId);
+    });
+    document.getElementById('btn-edit-group').addEventListener('click', openEditGroup);
+    document.getElementById('btn-delete-group').addEventListener('click', deleteGroup);
+
+    document.getElementById('btn-reset-group').addEventListener('click', async () => {
+      const group = await GroupRepo.get(state.currentGroupId);
+      const cards = await CardRepo.getByGroup(state.currentGroupId);
+      if (cards.length === 0) { showToast('Aucune carte à réinitialiser'); return; }
+
+      // Modale custom (pas de confirm() natif — bloqué sur Android PWA)
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay open';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-handle"></div>
+          <h2 style="margin-bottom:8px;">Réinitialiser la progression ?</h2>
+          <p style="font-size:14px;color:var(--text2);margin-bottom:20px;">
+            Les ${cards.length} carte${cards.length > 1 ? 's' : ''} du groupe <strong>${group.title}</strong> redeviendront "non étudiées".<br><br>
+            Tout l'historique de révision et les données FSRS (stabilité, difficulté, intervalles) seront effacés. Cette action est irréversible.
+          </p>
+          <button class="btn-danger" id="confirm-reset-btn">Réinitialiser</button>
+          <button class="btn-secondary" id="cancel-reset-btn">Annuler</button>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      document.getElementById('cancel-reset-btn').addEventListener('click', () => overlay.remove());
+      document.getElementById('confirm-reset-btn').addEventListener('click', async () => {
+        overlay.remove();
+        for (const card of cards) {
+          // Supprimer l'historique de révision
+          const reviews = await ReviewRepo.getByCard(card.id);
+          for (const r of reviews) await DB.del('reviews', r.id);
+          // Remettre la carte à l'état initial
+          await CardRepo.save({
+            ...card,
+            status: 'new',
+            fsrsState: 'new',
+            stability: null,
+            difficulty: null,
+            retrievability: null,
+            nextReviewAt: null,
+            lastReviewedAt: null,
+            totalReviews: 0,
+            totalForgotten: 0
+          });
+        }
+        showToast(`${cards.length} carte${cards.length > 1 ? 's' : ''} réinitialisée${cards.length > 1 ? 's' : ''}`);
+        await renderGroupDetail();
+      });
+    });
+    document.getElementById('btn-import-cards').addEventListener('click', () => openModal('modal-import'));
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + tab)?.classList.add('active');
+      });
+    });
+
+    // FAB création selon vue
+    document.querySelector('.fab').addEventListener('click', () => {
+      if (state.currentActivePanel === 'group-detail') openNewCardModal();
+      else openNewGroupModal();
+    });
+
+    // Rétention par groupe
+    document.getElementById('group-retention-select').addEventListener('change', async (e) => {
+      const group = await GroupRepo.get(state.currentGroupId);
+      await GroupRepo.save({ ...group, targetRetention: parseFloat(e.target.value) });
+      showToast('Rétention mise à jour');
+    });
+
+    // Réglages globaux
+    document.getElementById('setting-retention').addEventListener('change', async (e) => {
+      await SettingsRepo.set('targetRetention', parseFloat(e.target.value));
+      showToast('Rétention par défaut mise à jour');
+    });
+    document.getElementById('setting-new-cards').addEventListener('change', async (e) => {
+      await SettingsRepo.set('maxNewCardsPerDay', parseInt(e.target.value));
+      showToast('Limit de nouvelles cartes mise à jour');
+    });
+
+    // Persistance
+    document.getElementById('btn-request-persist').addEventListener('click', async () => {
+      const granted = await navigator.storage.persist();
+      if (granted) {
+        showToast('✓ Stockage persistant activé');
+        document.getElementById('persist-status').textContent = '✓ Stockage protégé actif';
+        document.getElementById('btn-request-persist').style.display = 'none';
+      } else {
+        showToast('Le système a refusé la demande');
+      }
+    });
+
+    // Export
+    document.getElementById('btn-export-all').addEventListener('click', async () => {
+      try {
+        await ImportExportService.exportAll();
+        showToast('Export téléchargé');
+      } catch (e) {
+        showToast('Erreur lors de l\'export');
+      }
+    });
+
+    // Import sauvegarde complète
+    document.getElementById('btn-import-all').addEventListener('click', () => {
+      document.getElementById('import-all-input').click();
+    });
+    document.getElementById('import-all-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) { e.target.value = ''; return; }
+      const overlayImport = document.createElement('div');
+      overlayImport.className = 'modal-overlay open';
+      overlayImport.innerHTML = `
+        <div class="modal">
+          <div class="modal-handle"></div>
+          <h2 style="margin-bottom:8px;">Restaurer une sauvegarde ?</h2>
+          <p style="font-size:14px;color:var(--text2);margin-bottom:20px;">
+            Cette action remplacera <strong>toutes tes données actuelles</strong> (groupes, cartes, historique, réglages) par le contenu du fichier. Irréversible.
+          </p>
+          <button class="btn-danger" id="confirm-import-all-btn">Restaurer</button>
+          <button class="btn-secondary" id="cancel-import-all-btn">Annuler</button>
+        </div>`;
+      document.body.appendChild(overlayImport);
+      document.getElementById('cancel-import-all-btn').addEventListener('click', () => { overlayImport.remove(); e.target.value = ''; });
+      document.getElementById('confirm-import-all-btn').addEventListener('click', async () => {
+        overlayImport.remove();
+        try {
+          const text = await file.text();
+          const n = await ImportExportService.importAll(text);
+          showToast(`Restauration réussie — ${n} groupes importés`);
+          await renderGroups();
+          await initSettings();
+        } catch (err) {
+          showToast('Fichier invalide ou corrompu');
+        }
+        e.target.value = '';
+      });
+    });
+
+    // Import CSV
+    document.getElementById('import-file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const cards = ImportExportService.parseCSV(text);
+      state.importedCards = cards;
+      if (cards.length === 0) {
+        showToast('Aucune carte valide dans le fichier');
+        return;
+      }
+      document.getElementById('import-preview-text').textContent =
+        `${cards.length} carte${cards.length > 1 ? 's' : ''} détectée${cards.length > 1 ? 's' : ''} · Exemple : "${cards[0].front}"`;
+      document.getElementById('import-preview').style.display = 'block';
+    });
+
+    document.getElementById('btn-confirm-import').addEventListener('click', async () => {
+      if (!state.importedCards.length) return;
+      const now = new Date().toISOString();
+      const newCards = state.importedCards.map(c => ({
+        id: uuid(), groupId: state.currentGroupId,
+        front: c.front, back: c.back, note: c.note || '',
+        status: 'new', fsrsState: 'new',
+        createdAt: now, stability: null, difficulty: null, retrievability: null,
+        nextReviewAt: null, lastReviewedAt: null, totalReviews: 0, totalForgotten: 0
+      }));
+      await CardRepo.saveMany(newCards);
+      closeModal('modal-import');
+      state.importedCards = [];
+      document.getElementById('import-preview').style.display = 'none';
+      document.getElementById('import-file-input').value = '';
+      showToast(`${newCards.length} carte${newCards.length > 1 ? 's' : ''} importée${newCards.length > 1 ? 's' : ''}`);
+      await renderGroupDetail();
+    });
+
+    // Fermer modals en cliquant l'overlay
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+    });
+
+    // Exposer au HTML inline
+    window.App = {
+      navigate, showGroupDetail, showCardDetail,
+      flipCard, rate, rate,
+      openModal, closeModal,
+      goToGroups, openEditCard,
+    };
+  }
+
+  return { init, navigate, showGroupDetail, showCardDetail, flipCard, rate, openModal, closeModal, goToGroups, openEditCard };
+})();
+
+// FAB à l'extérieur pour être accessible globalement
+document.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+
+<!-- FAB -->
+<button class="fab" id="fab-btn">
+  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+  </svg>
+</button>
+</body>
+</html>

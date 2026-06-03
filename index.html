@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f172a">
-<title>FlashMind</title>
+<title>FlashMind v1.5</title>
 <style>
 :root {
   --bg: #0f172a;
@@ -207,6 +207,28 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 #toast { position: fixed; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg3); color: var(--text); padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 500; opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 999; white-space: nowrap; box-shadow: var(--shadow); }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* CALENDRIER PROGRESSION */
+.calendar-wrap { padding: 16px; overflow-x: auto; }
+.calendar-table { border-collapse: collapse; min-width: 100%; }
+.cal-group-label { font-size: 12px; color: var(--text2); padding: 4px 8px 4px 0; white-space: nowrap; max-width: 100px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.cal-day-header { font-size: 9px; color: var(--text3); padding: 2px 3px; text-align: center; min-width: 22px; }
+.cal-day-header.today-header { color: var(--accent2); font-weight: 700; }
+.cal-cell { width: 22px; height: 22px; border-radius: 4px; cursor: default; position: relative; }
+.cal-cell.status-empty { background: var(--bg3); }
+.cal-cell.status-complete { background: var(--green); }
+.cal-cell.status-partial { background: var(--amber); }
+.cal-cell.status-expired { background: var(--red-bg); border: 1px solid rgba(239,68,68,0.3); }
+.cal-cell.status-pending { background: var(--bg3); border: 1px dashed var(--border2); }
+.cal-legend { display: flex; gap: 12px; padding: 12px 16px 0; flex-wrap: wrap; }
+.cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+.cal-legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+.cal-section-title { font-size: 13px; color: var(--text2); letter-spacing: 0.5px; text-transform: uppercase; padding: 16px 16px 8px; font-weight: 500; }
+.group-card-status { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.session-status-badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+.badge-complete { background: var(--green-bg); color: var(--green); }
+.badge-partial { background: var(--amber-bg); color: var(--amber); }
+.badge-pending { background: var(--bg3); color: var(--text3); }
+
 /* IMPORT SECTION */
 .import-drop { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--text2); cursor: pointer; transition: border-color 0.15s; margin-bottom: 12px; }
 .import-drop:hover { border-color: var(--accent); }
@@ -241,7 +263,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
     <!-- GROUPES -->
     <div class="view active" id="view-groups">
       <div class="view-header">
-        <h1>FlashMind</h1>
+        <h1>FlashMind <span style="font-size:11px;color:var(--text3);font-weight:400;vertical-align:middle;">v1.5</span></h1>
         <p id="groups-subtitle">Chargement…</p>
       </div>
       <div class="group-list" id="group-list"></div>
@@ -389,7 +411,22 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
       <div class="view-header">
         <h1>Statistiques</h1>
       </div>
-      <div class="stats-content" id="global-stats-content"></div>
+      <div class="tabs" style="border-bottom: 1px solid var(--border);">
+        <button class="tab-btn active" data-stats-tab="calendar">Calendrier</button>
+        <button class="tab-btn" data-stats-tab="global">Chiffres</button>
+      </div>
+      <div id="stats-tab-calendar" class="tab-content active">
+        <div class="cal-legend">
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--green)"></div>Terminé</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--amber)"></div>Partiel</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red-bg);border:1px solid rgba(239,68,68,0.3)"></div>Expiré</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--bg3)"></div>Aucune session</div>
+        </div>
+        <div class="calendar-wrap" id="calendar-content"></div>
+      </div>
+      <div id="stats-tab-global" class="tab-content">
+        <div class="stats-content" id="global-stats-content"></div>
+      </div>
     </div>
 
     <!-- RÉGLAGES -->
@@ -753,7 +790,7 @@ const FSRS = (() => {
 // ============================================================
 const DB = (() => {
   const DB_NAME = 'flashmind_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let db = null;
 
   function open() {
@@ -761,6 +798,7 @@ const DB = (() => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = (e) => {
         const d = e.target.result;
+        const oldVersion = e.oldVersion;
         if (!d.objectStoreNames.contains('groups')) {
           const gs = d.createObjectStore('groups', { keyPath: 'id' });
           gs.createIndex('updatedAt', 'updatedAt');
@@ -781,6 +819,13 @@ const DB = (() => {
         }
         if (!d.objectStoreNames.contains('sessions')) {
           d.createObjectStore('sessions', { keyPath: 'id' });
+        }
+        // Migration v2 : store daily_sessions
+        if (!d.objectStoreNames.contains('daily_sessions')) {
+          const ds = d.createObjectStore('daily_sessions', { keyPath: 'id' });
+          ds.createIndex('groupId_date', ['groupId', 'date'], { unique: true });
+          ds.createIndex('date', 'date');
+          ds.createIndex('groupId', 'groupId');
         }
       };
       req.onsuccess = (e) => { db = e.target.result; resolve(db); };
@@ -900,6 +945,20 @@ const SessionRepo = {
   delete: (id) => DB.del('sessions', id)
 };
 
+// DailySession : une entrée par (groupId × date YYYY-MM-DD)
+const DailySessionRepo = {
+  getAll: () => DB.getAll('daily_sessions'),
+  get: (id) => DB.get('daily_sessions', id),
+  getByGroupAndDate: async (groupId, date) => {
+    const all = await DB.getAll('daily_sessions', 'groupId', groupId);
+    return all.find(s => s.date === date) || null;
+  },
+  getByGroup: (groupId) => DB.getAll('daily_sessions', 'groupId', groupId),
+  getByDate: (date) => DB.getAll('daily_sessions', 'date', date),
+  save: (s) => DB.put('daily_sessions', s),
+  delete: (id) => DB.del('daily_sessions', id)
+};
+
 // ============================================================
 // SERVICES
 // ============================================================
@@ -990,21 +1049,120 @@ const StatsService = {
   }
 };
 
+// ============================================================
+// DAILY SESSION SERVICE
+// Gère le cycle de vie des sessions journalières
+// ============================================================
+const DailySessionService = {
+
+  // Retourne la date du jour au format YYYY-MM-DD (locale)
+  today() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  },
+
+  // Récupère ou crée la session du jour pour un groupe
+  async getOrCreateToday(groupId, cardQueue) {
+    const date = this.today();
+    let ds = await DailySessionRepo.getByGroupAndDate(groupId, date);
+    if (!ds) {
+      // Traiter les sessions expirées avant de créer la nouvelle
+      await this.processExpiredSessions(groupId);
+      ds = {
+        id: `${groupId}_${date}`,
+        groupId, date,
+        status: 'pending',
+        cardQueue: cardQueue.map(c => c.id),
+        remainingCardIds: cardQueue.map(c => c.id),
+        completedCardIds: [],
+        startedAt: null,
+        completedAt: null,
+        lastActivityAt: null
+      };
+      await DailySessionRepo.save(ds);
+    }
+    return ds;
+  },
+
+  // Marque la session comme démarrée
+  async markStarted(dsId) {
+    const ds = await DailySessionRepo.get(dsId);
+    if (!ds || ds.status === 'complete') return ds;
+    const updated = { ...ds, status: 'partial', startedAt: ds.startedAt || new Date().toISOString(), lastActivityAt: new Date().toISOString() };
+    await DailySessionRepo.save(updated);
+    return updated;
+  },
+
+  // Marque une carte comme complétée dans la session journalière
+  async markCardDone(dsId, cardId) {
+    const ds = await DailySessionRepo.get(dsId);
+    if (!ds) return;
+    const remaining = ds.remainingCardIds.filter(id => id !== cardId);
+    const completed = [...new Set([...ds.completedCardIds, cardId])];
+    const isComplete = remaining.length === 0;
+    const updated = {
+      ...ds,
+      remainingCardIds: remaining,
+      completedCardIds: completed,
+      status: isComplete ? 'complete' : 'partial',
+      completedAt: isComplete ? new Date().toISOString() : null,
+      lastActivityAt: new Date().toISOString()
+    };
+    await DailySessionRepo.save(updated);
+    return updated;
+  },
+
+  // Traite les sessions expirées d'un groupe (Option A : report)
+  async processExpiredSessions(groupId) {
+    const today = this.today();
+    const allSessions = await DailySessionRepo.getByGroup(groupId);
+    for (const ds of allSessions) {
+      if (ds.date < today && ds.status === 'partial' && ds.remainingCardIds.length > 0) {
+        // Reporter les cartes restantes dans la session d'aujourd'hui
+        // (elles seront naturellement incluses par FSRS.selectCards car leur
+        // nextReviewAt est dépassé — aucune action FSRS nécessaire)
+        await DailySessionRepo.save({ ...ds, status: 'expired' });
+      }
+    }
+  },
+
+  // Calcule les données du calendrier : 30 derniers jours × tous les groupes
+  async getCalendarData(days = 30) {
+    const today = this.today();
+    const dates = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      dates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+    }
+    const groups = await GroupRepo.getAll();
+    const allDS = await DailySessionRepo.getAll();
+
+    // Index rapide : groupId_date → session
+    const index = {};
+    for (const ds of allDS) index[`${ds.groupId}_${ds.date}`] = ds;
+
+    return { dates, groups, index };
+  }
+};
+
 const ImportExportService = {
   async exportAll() {
     const groups = await GroupRepo.getAll();
     const cards = await CardRepo.getAll();
     const reviews = await ReviewRepo.getAll();
+    const dailySessions = await DailySessionRepo.getAll();
     const settings = {
       targetRetention: await SettingsRepo.get('targetRetention', 0.90),
       maxNewCardsPerDay: await SettingsRepo.get('maxNewCardsPerDay', 30)
     };
 
     const data = {
-      exportVersion: '1.0',
+      exportVersion: '1.1',
       exportedAt: new Date().toISOString(),
       appName: 'FlashMind',
       settings,
+      dailySessions,
       groups: groups.map(g => ({
         ...g,
         cards: cards
@@ -1037,6 +1195,7 @@ const ImportExportService = {
     await DB.clearStore('cards');
     await DB.clearStore('reviews');
     await DB.clearStore('settings');
+    try { await DB.clearStore('daily_sessions'); } catch(e) {}
 
     if (data.settings) {
       await SettingsRepo.set('targetRetention', data.settings.targetRetention || 0.90);
@@ -1058,6 +1217,7 @@ const ImportExportService = {
 
     if (allCards.length) await DB.putMany('cards', allCards);
     if (allReviews.length) await DB.putMany('reviews', allReviews);
+    if (data.dailySessions?.length) await DB.putMany('daily_sessions', data.dailySessions);
     return data.groups?.length || 0;
   },
 
@@ -1115,7 +1275,7 @@ const App = (() => {
     document.getElementById('nav').style.display = '';
     state.currentView = viewName;
     state.currentActivePanel = viewName;
-    if (viewName === 'stats') renderGlobalStats();
+    if (viewName === 'stats') { renderCalendar(); renderGlobalStats(); }
   }
 
   function showGroupDetail(groupId) {
@@ -1182,19 +1342,30 @@ const App = (() => {
       return;
     }
 
-    container.innerHTML = groups.map(g => {
+    const groupHtmlParts = [];
+    for (const g of groups) {
       const gc = cards.filter(c => c.groupId === g.id);
       const due = gc.filter(c => c.nextReviewAt && new Date(c.nextReviewAt) <= now).length;
       const newC = gc.filter(c => !c.nextReviewAt || c.fsrsState === 'new').length;
       const learning = gc.filter(c => c.status === 'learning').length;
       const mastered = gc.filter(c => c.status === 'mastered').length;
-      return `<div class="group-card" onclick="App.showGroupDetail('${g.id}')">
+      let html = '';
+      // Badge session du jour
+      const dsToday = await DailySessionRepo.getByGroupAndDate(g.id, DailySessionService.today());
+      let sessionBadge = '';
+      if (dsToday) {
+        if (dsToday.status === 'complete') sessionBadge = '<span class="session-status-badge badge-complete">✓ Terminé aujourd\'hui</span>';
+        else if (dsToday.status === 'partial') sessionBadge = `<span class="session-status-badge badge-partial">⏸ ${dsToday.completedCardIds.length}/${dsToday.cardQueue.length} cartes</span>`;
+      }
+
+      html = `<div class="group-card" onclick="App.showGroupDetail('${g.id}')">
         <div class="group-card-header">
           <div>
             <h3>${escHtml(g.title)}</h3>
             ${g.description ? `<p>${escHtml(g.description)}</p>` : ''}
           </div>
         </div>
+        ${sessionBadge ? `<div class="group-card-status">${sessionBadge}</div>` : ''}
         <div class="group-card-stats">
           ${due > 0 ? `<span class="stat-pill pill-due">⚡ ${due} à réviser</span>` : ''}
           ${newC > 0 ? `<span class="stat-pill pill-new">${newC} nouvelles</span>` : ''}
@@ -1203,7 +1374,9 @@ const App = (() => {
           ${gc.length === 0 ? '<span class="stat-pill" style="background:var(--bg3);color:var(--text3)">Vide</span>' : ''}
         </div>
       </div>`;
-    }).join('');
+      groupHtmlParts.push(html);
+    }
+    container.innerHTML = groupHtmlParts.join('');
   }
 
   async function renderGroupDetail() {
@@ -1226,10 +1399,22 @@ const App = (() => {
 
     const canStart = stats.due > 0 || stats.newCards > 0;
     const btn = document.getElementById('btn-start-session');
-    btn.disabled = !canStart;
-    btn.textContent = canStart
-      ? `Réviser (${stats.due + stats.newCards} cartes)`
-      : 'Rien à réviser pour l\'instant';
+    // Vérifier session du jour
+    const dsToday = await DailySessionRepo.getByGroupAndDate(state.currentGroupId, DailySessionService.today());
+    const isPartial = dsToday && dsToday.status === 'partial' && dsToday.remainingCardIds.length > 0;
+    const isComplete = dsToday && dsToday.status === 'complete';
+    if (isComplete) {
+      btn.disabled = true;
+      btn.textContent = '✓ Session du jour terminée';
+    } else if (isPartial) {
+      btn.disabled = false;
+      btn.textContent = `Reprendre (${dsToday.remainingCardIds.length} cartes restantes)`;
+    } else {
+      btn.disabled = !canStart;
+      btn.textContent = canStart
+        ? `Réviser (${stats.due + stats.newCards} cartes)`
+        : "Rien à réviser pour l'instant";
+    }
 
     await renderCardList();
     await renderGroupStats(stats);
@@ -1295,6 +1480,50 @@ const App = (() => {
         </div>
       </div>
     `;
+  }
+
+  async function renderCalendar() {
+    const container = document.getElementById('calendar-content');
+    if (!container) return;
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px">Chargement…</div>';
+
+    const { dates, groups, index } = await DailySessionService.getCalendarData(30);
+    const today = DailySessionService.today();
+
+    if (groups.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>Aucun groupe créé</p></div>';
+      return;
+    }
+
+    // En-têtes des jours
+    let html = '<table class="calendar-table"><thead><tr><th></th>';
+    for (const date of dates) {
+      const d = new Date(date + 'T00:00:00');
+      const label = date === today ? 'auj.' : String(d.getDate());
+      const isToday = date === today;
+      html += `<th class="cal-day-header ${isToday ? 'today-header' : ''}">${label}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    // Lignes par groupe
+    for (const group of groups) {
+      html += `<tr><td class="cal-group-label" title="${group.title}">${group.title}</td>`;
+      for (const date of dates) {
+        const ds = index[`${group.id}_${date}`];
+        let statusClass = 'status-empty';
+        let title = '';
+        if (ds) {
+          if (ds.status === 'complete') { statusClass = 'status-complete'; title = `Terminé (${ds.completedCardIds.length} cartes)`; }
+          else if (ds.status === 'partial') { statusClass = 'status-partial'; title = `Partiel (${ds.completedCardIds.length}/${ds.cardQueue.length})`; }
+          else if (ds.status === 'expired') { statusClass = 'status-expired'; title = `Expiré (${ds.completedCardIds.length}/${ds.cardQueue.length})`; }
+          else if (ds.status === 'pending') { statusClass = 'status-pending'; title = 'Session créée, non démarrée'; }
+        }
+        html += `<td><div class="cal-cell ${statusClass}" title="${title}"></div></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
   }
 
   async function renderGlobalStats() {
@@ -1371,26 +1600,52 @@ const App = (() => {
     const maxNew = await SettingsRepo.get('maxNewCardsPerDay', 30);
     const targetRetention = group.targetRetention || 0.90;
     const cards = await CardRepo.getByGroup(groupId);
+    const today = DailySessionService.today();
 
-    const queue = FSRS.selectCards(cards, maxNew, targetRetention);
+    // Chercher une session partielle du jour
+    let ds = await DailySessionRepo.getByGroupAndDate(groupId, today);
 
-    if (queue.length === 0) {
-      showToast('Aucune carte à réviser pour l\'instant');
+    let queue;
+    let isResume = false;
+
+    if (ds && ds.status === 'partial' && ds.remainingCardIds.length > 0) {
+      // Reprendre la session partielle : cartes restantes en premier
+      const remainingCards = ds.remainingCardIds
+        .map(id => cards.find(c => c.id === id))
+        .filter(Boolean);
+      queue = remainingCards;
+      isResume = true;
+    } else if (ds && ds.status === 'complete') {
+      showToast('Session du jour déjà terminée ! 🎉');
       return;
+    } else {
+      // Nouvelle session : sélection FSRS normale
+      queue = FSRS.selectCards(cards, maxNew, targetRetention);
+      if (queue.length === 0) {
+        showToast("Aucune carte à réviser pour l'instant");
+        return;
+      }
+      // Créer/mettre à jour la DailySession
+      ds = await DailySessionService.getOrCreateToday(groupId, queue);
     }
+
+    ds = await DailySessionService.markStarted(ds.id);
 
     state.session = {
       groupId,
+      dailySessionId: ds.id,
       queue: [...queue],
-      originalQueue: [...queue],
+      originalQueue: ds ? ds.cardQueue.map(id => cards.find(c => c.id === id)).filter(Boolean) : [...queue],
       current: 0,
       results: { again: 0, hard: 0, good: 0, easy: 0 },
       targetRetention,
-      startedAt: new Date().toISOString()
+      startedAt: new Date().toISOString(),
+      isResume
     };
 
     state.cardFlipped = false;
     showSession();
+    if (isResume) showToast('Reprise de la session en cours…');
     renderSessionCard();
   }
 
@@ -1505,6 +1760,11 @@ const App = (() => {
     // Stats session
     const ratingKey = ['', 'again', 'hard', 'good', 'easy'][rating];
     s.results[ratingKey]++;
+
+    // Marquer la carte dans la DailySession (sauf Again — carte pas terminée)
+    if (rating !== 1 && s.dailySessionId) {
+      await DailySessionService.markCardDone(s.dailySessionId, card.id);
+    }
 
     // Si Again → remettre la carte en fin de file
     if (rating === 1) {
@@ -1838,7 +2098,21 @@ const App = (() => {
     });
     document.getElementById('btn-import-cards').addEventListener('click', () => openModal('modal-import'));
 
-    // Tabs
+    // Tabs stats
+    document.querySelectorAll('[data-stats-tab]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tab = btn.dataset.statsTab;
+        document.querySelectorAll('[data-stats-tab]').forEach(b => b.classList.remove('active'));
+        document.getElementById('stats-tab-calendar').classList.remove('active');
+        document.getElementById('stats-tab-global').classList.remove('active');
+        btn.classList.add('active');
+        document.getElementById(`stats-tab-${tab}`).classList.add('active');
+        if (tab === 'global') renderGlobalStats();
+        else renderCalendar();
+      });
+    });
+
+    // Tabs groupe
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const tab = btn.dataset.tab;

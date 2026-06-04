@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f172a">
-<title>FlashMind v1.5</title>
+<title>FlashMind v1.6</title>
 <style>
 :root {
   --bg: #0f172a;
@@ -256,6 +256,27 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .fsrs-stat .fs-val { font-size: 16px; font-weight: 600; }
 .fsrs-stat .fs-label { font-size: 10px; color: var(--text3); margin-top: 2px; }
 </style>
+<script>
+// Enregistrement du Service Worker (mode hors ligne)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/FLASHCARD/sw.js')
+      .then(reg => {
+        // Écouter les mises à jour disponibles
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // Nouvelle version disponible — notifier l'app
+              window._swUpdateAvailable = true;
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('SW non enregistré :', err));
+  });
+}
+</script>
 </head>
 <body>
 <div id="app">
@@ -263,7 +284,7 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
     <!-- GROUPES -->
     <div class="view active" id="view-groups">
       <div class="view-header">
-        <h1>FlashMind <span style="font-size:11px;color:var(--text3);font-weight:400;vertical-align:middle;">v1.5</span></h1>
+        <h1>FlashMind <span style="font-size:11px;color:var(--text3);font-weight:400;vertical-align:middle;">v1.6</span></h1>
         <p id="groups-subtitle">Chargement…</p>
       </div>
       <div class="group-list" id="group-list"></div>
@@ -477,6 +498,12 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
               <p id="persist-status">Vérification…</p>
             </div>
             <button class="btn-secondary" id="btn-request-persist" style="width:auto; padding: 6px 12px; font-size: 13px; margin: 0;">Activer</button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-row-left">
+              <h4>Mode hors ligne</h4>
+              <p id="sw-status">Vérification…</p>
+            </div>
           </div>
         </div>
         <div style="height: 80px;"></div>
@@ -1961,6 +1988,26 @@ const App = (() => {
       document.getElementById('persist-status').textContent = 'Non supporté sur cet appareil';
       document.getElementById('btn-request-persist').style.display = 'none';
     }
+    checkSWStatus();
+  }
+
+  function checkSWStatus() {
+    const swEl = document.getElementById('sw-status');
+    if (!swEl) return;
+    if (!('serviceWorker' in navigator)) {
+      swEl.textContent = 'Non supporté sur cet appareil';
+      return;
+    }
+    navigator.serviceWorker.getRegistration('/FLASHCARD/sw.js')
+      .then(reg => {
+        if (reg && (reg.active || reg.installing || reg.waiting)) {
+          swEl.textContent = '✓ Actif — application disponible hors ligne';
+          swEl.style.color = 'var(--green)';
+        } else {
+          swEl.textContent = 'En cours d\'installation… (recharge la page)';
+        }
+      })
+      .catch(() => { swEl.textContent = 'Non disponible'; });
   }
 
   function formatDate(iso) {

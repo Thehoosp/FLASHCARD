@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0f172a">
-<title>FlashMind v1.6</title>
+<title>FlashMind v1.7</title>
 <style>
 :root {
   --bg: #0f172a;
@@ -230,11 +230,15 @@ html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(-
 .badge-pending { background: var(--bg3); color: var(--text3); }
 
 /* IMPORT SECTION */
-.import-drop { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--text2); cursor: pointer; transition: border-color 0.15s; margin-bottom: 12px; }
-.import-drop:hover { border-color: var(--accent); }
+.import-drop { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--text2); cursor: pointer; transition: border-color 0.15s, background 0.15s; margin-bottom: 12px; }
+.import-drop:hover { border-color: var(--accent); background: var(--accent-bg); }
 .import-drop svg { width: 32px; height: 32px; margin: 0 auto 8px; opacity: 0.5; }
 .import-drop p { font-size: 14px; }
 .import-drop p small { display: block; font-size: 12px; color: var(--text3); margin-top: 4px; }
+.preview-card-row { font-size: 12px; color: var(--text2); padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 6px; }
+.preview-card-row:last-child { border-bottom: none; }
+.preview-card-front { color: var(--text); font-weight: 500; flex-shrink: 0; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-card-back { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 
 /* ANIMATIONS */
 @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -284,7 +288,7 @@ if ('serviceWorker' in navigator) {
     <!-- GROUPES -->
     <div class="view active" id="view-groups">
       <div class="view-header">
-        <h1>FlashMind <span style="font-size:11px;color:var(--text3);font-weight:400;vertical-align:middle;">v1.6</span></h1>
+        <h1>FlashMind <span style="font-size:11px;color:var(--text3);font-weight:400;vertical-align:middle;">v1.7</span></h1>
         <p id="groups-subtitle">Chargement…</p>
       </div>
       <div class="group-list" id="group-list"></div>
@@ -585,17 +589,44 @@ if ('serviceWorker' in navigator) {
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
       </button>
     </div>
-    <div class="import-drop" id="import-drop-zone" onclick="document.getElementById('import-file-input').click()">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-      <p>Appuie pour choisir un fichier
-        <small>Format : titre;réponse;note (TXT ou CSV)</small>
-      </p>
+
+    <!-- Onglets source -->
+    <div style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px;">
+      <button class="tab-btn active" data-import-tab="file" style="flex:1;" onclick="App.switchImportTab('file')">Fichier</button>
+      <button class="tab-btn" data-import-tab="paste" style="flex:1;" onclick="App.switchImportTab('paste')">Copier-coller</button>
     </div>
-    <input type="file" id="import-file-input" accept=".txt,.csv" style="display:none">
-    <div id="import-preview" style="display:none">
-      <p style="font-size:14px; color: var(--text2); margin-bottom: 12px;" id="import-preview-text"></p>
-      <button class="btn-primary" id="btn-confirm-import">Importer</button>
+
+    <!-- TAB : Fichier -->
+    <div id="import-tab-file">
+      <div class="import-drop" id="import-drop-zone" onclick="document.getElementById('import-file-input').click()">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        <p>Appuie pour choisir un fichier
+          <small>TXT, CSV ou PDF · Format : titre;réponse;note</small>
+        </p>
+      </div>
+      <input type="file" id="import-file-input" accept=".txt,.csv,.pdf" style="display:none">
+      <div id="import-file-status" style="font-size:13px;color:var(--text3);margin-bottom:8px;display:none;"></div>
     </div>
+
+    <!-- TAB : Copier-coller -->
+    <div id="import-tab-paste" style="display:none;">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Une carte par ligne · Séparateur : point-virgule</p>
+      <div class="form-group" style="margin-bottom:8px;">
+        <textarea id="import-paste-area" placeholder="Question;Réponse;Note explicative&#10;Capitale de la France;Paris;Ville la plus peuplée&#10;..." style="min-height:140px;font-size:13px;"></textarea>
+      </div>
+      <button class="btn-secondary" id="btn-analyze-paste" style="margin-bottom:8px;">Analyser</button>
+    </div>
+
+    <!-- Prévisualisation commune -->
+    <div id="import-preview" style="display:none;">
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:6px;" id="import-preview-text"></p>
+        <div id="import-preview-list" style="max-height:120px;overflow-y:auto;"></div>
+      </div>
+      <div id="import-warnings" style="display:none;font-size:12px;color:var(--amber);margin-bottom:8px;"></div>
+      <button class="btn-primary" id="btn-confirm-import">Importer ces cartes</button>
+    </div>
+
     <button class="btn-secondary" onclick="App.closeModal('modal-import')">Annuler</button>
   </div>
 </div>
@@ -1251,19 +1282,89 @@ const ImportExportService = {
   parseCSV(text) {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     const cards = [];
-    for (const line of lines) {
+    const warnings = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const parts = line.split(';');
       if (parts.length >= 2) {
-        cards.push({
+        const card = {
           front: (parts[0] || '').trim(),
           back: (parts[1] || '').trim(),
           note: (parts[2] || '').trim()
-        });
+        };
+        if (card.front && card.back) cards.push(card);
+        else warnings.push(`Ligne ${i+1} ignorée : recto ou verso vide`);
+      } else if (line.trim()) {
+        warnings.push(`Ligne ${i+1} ignorée : pas de séparateur ";" trouvé`);
       }
     }
-    return cards.filter(c => c.front && c.back);
+    return { cards, warnings };
+  },
+
+  async parsePDF(file) {
+    // Extraction texte natif depuis PDF via FileReader + détection structure
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target.result;
+          const text = await extractTextFromPDF(arrayBuffer);
+          if (!text || !text.trim()) {
+            reject(new Error('Aucun texte extractible dans ce PDF. Vérifiez qu\'il ne s\'agit pas d\'un scan.'));
+            return;
+          }
+          const result = ImportExportService.parseCSV(text);
+          resolve(result);
+        } catch(err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
+      reader.readAsArrayBuffer(file);
+    });
   }
 };
+
+// Extraction texte PDF pure JS (sans dépendance externe)
+// Fonctionne sur les PDF avec texte natif (pas les scans)
+async function extractTextFromPDF(arrayBuffer) {
+  const bytes = new Uint8Array(arrayBuffer);
+  const decoder = new TextDecoder('latin1');
+  const raw = decoder.decode(bytes);
+
+  // Vérification signature PDF
+  if (!raw.startsWith('%PDF')) {
+    throw new Error('Ce fichier ne semble pas être un PDF valide.');
+  }
+
+  // Extraction des blocs texte entre BT...ET (Begin Text / End Text)
+  const lines = [];
+  const btBlocks = raw.matchAll(/BT([\s\S]*?)ET/g);
+
+  for (const block of btBlocks) {
+    const blockContent = block[1];
+    // Extraire les chaînes entre parenthèses : (texte)Tj ou [(texte)]TJ
+    const strings = blockContent.matchAll(/\(([^)\\]*(\\.[^)\\]*)*)\)/g);
+    let blockText = '';
+    for (const s of strings) {
+      // Décoder les séquences d'échappement PDF
+      let str = s[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
+        .replace(/\\\\/g, '\\')
+        .replace(/\\\(/g, '(')
+        .replace(/\\\)/g, ')');
+      blockText += str;
+    }
+    if (blockText.trim()) lines.push(blockText.trim());
+  }
+
+  // Reconstituer les lignes de carte (titre;réponse;note)
+  // Stratégie : rejoindre les fragments et chercher les séparateurs ";"
+  const fullText = lines.join('\n');
+  return fullText;
+}
 
 // ============================================================
 // MAIN APP CONTROLLER
@@ -2251,22 +2352,82 @@ const App = (() => {
       });
     });
 
-    // Import CSV
+    // ── Helpers import ──────────────────────────────────────
+    function showImportPreview(cards, warnings) {
+      state.importedCards = cards;
+      if (cards.length === 0) {
+        showToast('Aucune carte valide trouvée');
+        document.getElementById('import-preview').style.display = 'none';
+        return;
+      }
+      const n = cards.length;
+      document.getElementById('import-preview-text').textContent =
+        `${n} carte${n > 1 ? 's' : ''} détectée${n > 1 ? 's' : ''}`;
+
+      // Aperçu des 3 premières cartes
+      const listEl = document.getElementById('import-preview-list');
+      listEl.innerHTML = cards.slice(0, 3).map(c =>
+        `<div class="preview-card-row">
+          <span class="preview-card-front">${escHtml(c.front)}</span>
+          <span style="color:var(--text3)">→</span>
+          <span class="preview-card-back">${escHtml(c.back)}</span>
+        </div>`
+      ).join('') + (n > 3 ? `<div style="font-size:11px;color:var(--text3);padding-top:4px;">… et ${n - 3} autre${n-3>1?'s':''}</div>` : '');
+
+      // Avertissements
+      const warnEl = document.getElementById('import-warnings');
+      if (warnings && warnings.length > 0) {
+        warnEl.textContent = `⚠ ${warnings.length} ligne${warnings.length>1?'s':''} ignorée${warnings.length>1?'s':''} : ${warnings[0]}${warnings.length > 1 ? '…' : ''}`;
+        warnEl.style.display = 'block';
+      } else {
+        warnEl.style.display = 'none';
+      }
+
+      document.getElementById('import-preview').style.display = 'block';
+    }
+
+    function resetImportModal() {
+      state.importedCards = [];
+      document.getElementById('import-preview').style.display = 'none';
+      document.getElementById('import-file-input').value = '';
+      document.getElementById('import-paste-area').value = '';
+      document.getElementById('import-file-status').style.display = 'none';
+      document.getElementById('import-warnings').style.display = 'none';
+    }
+
+    // ── Fichier TXT/CSV ──────────────────────────────────────
     document.getElementById('import-file-input').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      const text = await file.text();
-      const cards = ImportExportService.parseCSV(text);
-      state.importedCards = cards;
-      if (cards.length === 0) {
-        showToast('Aucune carte valide dans le fichier');
-        return;
+      const statusEl = document.getElementById('import-file-status');
+      statusEl.style.display = 'block';
+
+      try {
+        let result;
+        if (file.name.toLowerCase().endsWith('.pdf')) {
+          statusEl.textContent = 'Extraction du texte PDF en cours…';
+          result = await ImportExportService.parsePDF(file);
+        } else {
+          const text = await file.text();
+          result = ImportExportService.parseCSV(text);
+        }
+        statusEl.style.display = 'none';
+        showImportPreview(result.cards, result.warnings);
+      } catch(err) {
+        statusEl.textContent = 'Erreur : ' + err.message;
+        statusEl.style.color = 'var(--red)';
       }
-      document.getElementById('import-preview-text').textContent =
-        `${cards.length} carte${cards.length > 1 ? 's' : ''} détectée${cards.length > 1 ? 's' : ''} · Exemple : "${cards[0].front}"`;
-      document.getElementById('import-preview').style.display = 'block';
     });
 
+    // ── Copier-coller ────────────────────────────────────────
+    document.getElementById('btn-analyze-paste').addEventListener('click', () => {
+      const text = document.getElementById('import-paste-area').value;
+      if (!text.trim()) { showToast('Colle du contenu avant d\'analyser'); return; }
+      const result = ImportExportService.parseCSV(text);
+      showImportPreview(result.cards, result.warnings);
+    });
+
+    // ── Confirmation import ──────────────────────────────────
     document.getElementById('btn-confirm-import').addEventListener('click', async () => {
       if (!state.importedCards.length) return;
       const now = new Date().toISOString();
@@ -2279,10 +2440,9 @@ const App = (() => {
       }));
       await CardRepo.saveMany(newCards);
       closeModal('modal-import');
-      state.importedCards = [];
-      document.getElementById('import-preview').style.display = 'none';
-      document.getElementById('import-file-input').value = '';
-      showToast(`${newCards.length} carte${newCards.length > 1 ? 's' : ''} importée${newCards.length > 1 ? 's' : ''}`);
+      resetImportModal();
+      const n = newCards.length;
+      showToast(`${n} carte${n > 1 ? 's' : ''} importée${n > 1 ? 's' : ''}`);
       await renderGroupDetail();
     });
 
@@ -2294,11 +2454,28 @@ const App = (() => {
     });
 
     // Exposer au HTML inline
+    function switchImportTab(tab) {
+      document.querySelectorAll('[data-import-tab]').forEach(b => b.classList.remove('active'));
+      document.querySelector(`[data-import-tab="${tab}"]`).classList.add('active');
+      document.getElementById('import-tab-file').style.display = tab === 'file' ? 'block' : 'none';
+      document.getElementById('import-tab-paste').style.display = tab === 'paste' ? 'block' : 'none';
+      // Reset preview quand on change d'onglet
+      document.getElementById('import-preview').style.display = 'none';
+      state.importedCards = [];
+    }
+
+    // Reset modal à l'ouverture
+    const origOpenModal = openModal;
+    function openModalAndReset(id) {
+      if (id === 'modal-import') { resetImportModal && resetImportModal(); switchImportTab('file'); }
+      origOpenModal(id);
+    }
+
     window.App = {
       navigate, showGroupDetail, showCardDetail,
-      flipCard, rate, rate,
-      openModal, closeModal,
-      goToGroups, openEditCard,
+      flipCard, rate,
+      openModal: openModalAndReset, closeModal,
+      goToGroups, openEditCard, switchImportTab,
     };
   }
 

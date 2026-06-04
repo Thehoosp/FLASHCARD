@@ -592,8 +592,8 @@ if ('serviceWorker' in navigator) {
 
     <!-- Onglets source -->
     <div style="display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:16px;">
-      <button class="tab-btn active" data-import-tab="file" style="flex:1;" onclick="App.switchImportTab('file')">Fichier</button>
-      <button class="tab-btn" data-import-tab="paste" style="flex:1;" onclick="App.switchImportTab('paste')">Copier-coller</button>
+      <button class="tab-btn active" data-import-tab="file" style="flex:1;" id="import-tab-btn-file">Fichier</button>
+      <button class="tab-btn" data-import-tab="paste" style="flex:1;" id="import-tab-btn-paste">Copier-coller</button>
     </div>
 
     <!-- TAB : Fichier -->
@@ -612,9 +612,12 @@ if ('serviceWorker' in navigator) {
     <div id="import-tab-paste" style="display:none;">
       <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Une carte par ligne · Séparateur : point-virgule</p>
       <div class="form-group" style="margin-bottom:8px;">
-        <textarea id="import-paste-area" placeholder="Question;Réponse;Note explicative&#10;Capitale de la France;Paris;Ville la plus peuplée&#10;..." style="min-height:140px;font-size:13px;"></textarea>
+        <textarea id="import-paste-area"
+          placeholder="Question;Réponse;Note explicative&#10;Capitale de la France;Paris;Ville la plus peuplée&#10;..."
+          style="min-height:160px;font-size:14px;line-height:1.5;"
+          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       </div>
-      <button class="btn-secondary" id="btn-analyze-paste" style="margin-bottom:8px;">Analyser</button>
+      <button class="btn-primary" id="btn-analyze-paste" style="margin-bottom:8px;">Analyser le contenu</button>
     </div>
 
     <!-- Prévisualisation commune -->
@@ -2456,13 +2459,25 @@ const App = (() => {
     // Exposer au HTML inline
     function switchImportTab(tab) {
       document.querySelectorAll('[data-import-tab]').forEach(b => b.classList.remove('active'));
-      document.querySelector(`[data-import-tab="${tab}"]`).classList.add('active');
+      const activeBtn = document.getElementById(`import-tab-btn-${tab}`);
+      if (activeBtn) activeBtn.classList.add('active');
       document.getElementById('import-tab-file').style.display = tab === 'file' ? 'block' : 'none';
       document.getElementById('import-tab-paste').style.display = tab === 'paste' ? 'block' : 'none';
       // Reset preview quand on change d'onglet
       document.getElementById('import-preview').style.display = 'none';
       state.importedCards = [];
+      // Focus textarea après rendu — délai nécessaire sur Android Chrome
+      if (tab === 'paste') {
+        setTimeout(() => {
+          const ta = document.getElementById('import-paste-area');
+          if (ta) ta.focus();
+        }, 120);
+      }
     }
+
+    // Brancher les listeners des onglets import dans init()
+    document.getElementById('import-tab-btn-file').addEventListener('click', () => switchImportTab('file'));
+    document.getElementById('import-tab-btn-paste').addEventListener('click', () => switchImportTab('paste'));
 
     // Reset modal à l'ouverture
     const origOpenModal = openModal;
